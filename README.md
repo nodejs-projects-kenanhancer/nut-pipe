@@ -20,7 +20,7 @@ $ npm i -S nut-pipe
 ## Usage
 
 Create your middlewares like the following code. According to the following code, there are three middlewares named middleware1, middleware2, middleware3 and 
-after pipeline is builded with ```const pipelineInvoker = pipelineBuilder([middleware1, middleware2, middleware3]);```, pipelineInvoker variable will be a function to call middlewares sequentially. In this case, when ```pipelineInvoker({ Person: person });``` function is called, firstly middleware1 will run, then middleware2, then middleware 3. 
+after pipeline is builded with ```const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);```, pipelineInvoker variable will be a function to call middlewares sequentially. In this case, when ```pipelineInvoker({ Person: person });``` function is called, firstly middleware1 will run, then middleware2, then middleware 3. 
 
 ## Basic Example
 
@@ -29,39 +29,39 @@ https://kenanhancer.com/2018/01/18/javascript-pipeline-demo-with-es6/
 
 **`app.js`**
 ```js
-const middleware1 = (environment, next) => {
+const middleware1 = (context, next) => {
 
-  const person = JSON.stringify(environment.Person);
+  const person = JSON.stringify(context.Person);
 
   console.log(`ENTRY: middleware1, Person = ${person}`);
 
-  environment.Person.city = "Istanbul";
+  context.Person.city = "Istanbul";
 
-  next(environment);
+  next(context);
 };
 
-const middleware2 = (environment, next) => {
+const middleware2 = (context, next) => {
 
-  const person = JSON.stringify(environment.Person);
+  const person = JSON.stringify(context.Person);
 
   console.log(`ENTRY: middleware2, Person = ${person}`);
 
-  environment.Person.email = 'kenanhancer@gmail.com';
+  context.Person.email = 'kenanhancer@gmail.com';
 
-  next(environment);
+  next(context);
 };
 
-const middleware3 = (environment, next) => {
+const middleware3 = (context, next) => {
 
-  const person = JSON.stringify(environment.Person);
+  const person = JSON.stringify(context.Person);
 
   console.log(`ENTRY: middleware3, Person = ${person}`);
 
-  next(environment);
+  next(context);
 };
 
 
-const pipelineInvoker = pipelineBuilder([middleware1, middleware2, middleware3]);
+const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);
 
 const person = {
   personId: 1,
@@ -221,35 +221,33 @@ const greetingService = {
 
 
 /////////////////ASPECTS///////////////////////////
-const errorMidlleware = (environment, next) => {
+const errorMidlleware = (context, next) => {
 
   try {
 
-    const result = next(environment);
+    const result = next(context);
 
     return result;
 
   } catch (error) {
 
-    const {method, args} = environment;
+    const {method, args} = context;
 
     console.log(`ERROR: ${method.name}(${JSON.stringify(args)}) function`);
 
     throw error;
   }
-
-  return undefined;
 };
 
-const logMiddleware = (environment, next) => {
+const logMiddleware = (context, next) => {
 
-  const {method, args} = environment;
+  const {method, args} = context;
 
   console.log(`ENTRY: ${method.name}(${JSON.stringify(args)}) function`)
 
   const startDate = new Date();
 
-  const result = next(environment);
+  const result = next(context);
 
   const elapsedMilliseconds = new Date() - startDate;
 
@@ -258,9 +256,9 @@ const logMiddleware = (environment, next) => {
   return result;
 };
 
-const dynamicFunctionCallerMiddleware = (environment, next) => {
+const dynamicFunctionCallerMiddleware = (context, next) => {
 
-  const { method, args } = environment;
+  const { method, args } = context;
 
   const result = method.apply(null, [args]);
 
@@ -287,4 +285,73 @@ result = pipelineInvoker({
 });
 
 console.log(result);
+```
+
+### AWS Lambda Function Handler
+
+If you have a lambda function, then you could use middleware logic as well
+
+**`app.js`**
+```js
+const corsMiddleware = async (event, context, next) => {
+
+    const response = await next(event, context);
+
+    if (!response.headers) {
+        response.headers = {};
+    }
+
+    response.headers['Access-Control-Allow-Origin'] = '*';
+    response.headers['Access-Control-Allow-Credentials'] = true;
+
+    return response;
+};
+
+const logMiddleware = async (event, context, next) => {
+
+    try {
+        console.debug(`logMiddleware: request received in ${context.functionName} lambda`, event);
+
+        return await next(event, context);
+    } catch (e) {
+        console.error(`logMiddleware: request failed in ${context.functionName} lambda`, event, e);
+
+        throw e;
+    }
+};
+
+const jsonBodyParser = async (event, context, next) => {
+
+    let parsedBody;
+
+    try {
+        console.debug(`jsonParserMiddleware: parsing JSON in ${context.functionName}`, event);
+
+        parsedBody = JSON.parse(event.body);
+    } catch (e) {
+        console.error(`jsonParserMiddleware: failed to parse JSON in ${context.functionName}`, {}, e);
+
+        throw new BadJsonResponse('invalid body, expected JSON');
+    }
+
+    return next(...[...Object.values(parsedBody), context]);
+};
+
+const lambdaHandler = (firstName, lastName) => {
+
+    return {
+        body: `Hello ${firstName} ${lastName}`,
+        statusCode: 200,
+    };
+};
+
+let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler]);
+
+let args = { firstName: "kenan", lastName: "hancer" }
+
+let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
+
+expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+expect(result.statusCode).toEqual(200);
 ```

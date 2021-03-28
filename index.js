@@ -1,24 +1,32 @@
-const buildPipeline = (functions, index = 0) => {
+const buildPipeline = (functions, services = undefined, index = 0) => {
 
     let pipelineFunc = (...args) => {
 
-        if (index < functions.length - 1) {
-            const funcParametersLength = functions[index].length;
+        const funcParametersLength = functions[index].length;
 
-            const passedArgumentsLength = args.length;
+        const passedArgumentsLength = args.length;
 
-            const nullParametersLength = funcParametersLength - passedArgumentsLength - 1
+        const nullParametersLength = funcParametersLength - passedArgumentsLength;
 
-            if (nullParametersLength > 0) {
-                args.unshift(...Array(nullParametersLength).fill(null));
-            } else if (nullParametersLength < 0) {
-                // args = args.slice(0, funcParametersLength - 1);
+        const isEndOfPipeline = index === functions.length - 1;
+
+        if (!isEndOfPipeline) {
+            if (nullParametersLength > 2) {
+                args.push(...Array(nullParametersLength - 2).fill(null));
             }
 
-            return functions[index].apply(null, [...args, buildPipeline(functions, index + 1)]);
+            if (nullParametersLength >= 2) {
+                args.push(services);
+            }
+
+            args.push(buildPipeline(functions, services, index + 1));
+        } else if (isEndOfPipeline) {
+            if (nullParametersLength === 1) {
+                args.push(services);
+            }
         }
 
-        return functions[index].apply(null, [...args]);
+        return functions[index].apply(null, args);
     };
 
     return pipelineFunc;

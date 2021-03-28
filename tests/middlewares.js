@@ -23,7 +23,7 @@ module.exports = {
 
         return response;
     },
-    middleware3: (context, next) => {
+    middleware3: (context) => {
 
         const person = JSON.stringify(context.Person);
 
@@ -64,7 +64,7 @@ module.exports = {
 
         return result;
     },
-    dynamicFunctionCallerMiddleware: (context, next) => {
+    dynamicFunctionCallerMiddleware: (context) => {
 
         const { method, args } = context;
 

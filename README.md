@@ -1,6 +1,6 @@
 # nut-pipe
 
-a very simple middleware pipeline builder.
+a very simple middleware pipeline builder. You can even use nut-pipe to add middlewares to your AWS Lambda functions so check README for AWS Lambda usage.
 
 build pipeline with your middlewares easily. Visit below page for live demo.
 

@@ -29,7 +29,7 @@ describe('NUT-PIPE tests', () => {
             return next(context);
         };
 
-        const basicMiddleware4 = (context, next) => {
+        const basicMiddleware4 = (context) => {
 
             mockMiddleware();
 
@@ -45,6 +45,96 @@ describe('NUT-PIPE tests', () => {
         expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
 
         expect(mockMiddleware.mock.calls.length).toBe(4);
+    });
+
+    it('then create a basic pipeline function with services', () => {
+
+        const mockMiddleware = jest.fn();
+
+        const basicMiddleware1 = (context, services, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware2 = (context, services, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware3 = (context, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware4 = (context, services) => {
+
+            mockMiddleware();
+
+            return services.greetingService.sayHello(context);
+        };
+
+        const services = { greetingService };
+
+        const pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, basicMiddleware4], services);
+
+        const person = { firstName: "kenan", lastName: "hancer" };
+
+        const response = pipelineInvoker(person);
+
+        expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
+
+        expect(mockMiddleware.mock.calls.length).toBe(4);
+    });
+
+    it('should throw error without passing arguments', () => {
+
+        const mockMiddleware = jest.fn();
+
+        const basicMiddleware1 = (context, services, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware2 = (context, services, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware3 = (context, next) => {
+
+            mockMiddleware();
+
+            return next(context);
+        };
+
+        const basicMiddleware4 = (context, services) => {
+
+            mockMiddleware();
+
+            return services.greetingService.sayHello(context);
+        };
+
+        const services = { greetingService };
+
+        const pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, basicMiddleware4], services);
+
+        try {
+            const person = { firstName: "kenan", lastName: "hancer" };
+
+            const response = pipelineInvoker();
+        } catch (error) {
+            expect(error.message).toContain('Cannot destructure property');
+        }
     });
 
     it('should create a new pipeline function from middlewares and return with extra two more fields', () => {

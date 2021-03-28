@@ -345,13 +345,17 @@ const lambdaHandler = (firstName, lastName) => {
     };
 };
 
-let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler]);
+const mainAsync = async () => {
+  let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler]);
 
-let args = { firstName: "kenan", lastName: "hancer" }
+  let args = { firstName: "kenan", lastName: "hancer" }
 
-let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
+  let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
 
-expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+  expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
-expect(result.statusCode).toEqual(200);
+  expect(result.statusCode).toEqual(200);
+};
+
+mainAsync();
 ```

@@ -1,10 +1,27 @@
 const buildPipeline = (functions, index = 0) => {
 
-    if (functions.length == index) return (env) => { }; //Default handler
+    let pipelineFunc = (...args) => {
 
-    let pipelineFunc = (environment) => functions[index](environment, buildPipeline(functions, index + 1));
+        if (index < functions.length - 1) {
+            const funcParametersLength = functions[index].length;
+
+            const passedArgumentsLength = args.length;
+
+            const nullParametersLength = funcParametersLength - passedArgumentsLength - 1
+
+            if (nullParametersLength > 0) {
+                args.unshift(...Array(nullParametersLength).fill(null));
+            } else if (nullParametersLength < 0) {
+                // args = args.slice(0, funcParametersLength - 1);
+            }
+
+            return functions[index].apply(null, [...args, buildPipeline(functions, index + 1)]);
+        }
+
+        return functions[index].apply(null, [...args]);
+    };
 
     return pipelineFunc;
 };
 
-module.exports = {buildPipeline};
+module.exports = { buildPipeline };

@@ -345,20 +345,22 @@ describe('NUT-PIPE tests', () => {
                 throw new BadJsonResponse('invalid body, expected JSON');
             }
 
-            return next(...[...Object.values(parsedBody), context]);
+            return next(...Object.values(parsedBody));
         };
 
-        const lambdaHandler = (firstName, lastName) => {
+        const lambdaHandler = (firstName, lastName, services) => {
 
             return {
-                body: `Hello ${firstName} ${lastName}`,
+                body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
             };
         };
 
-        let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler]);
+        const services = { greetingService };
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler], services);
+
+        let args = { firstName: "kenan", lastName: "hancer" };
 
         let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
 

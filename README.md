@@ -1,6 +1,6 @@
 # nut-pipe
 
-a very simple middleware pipeline builder.
+a very simple middleware pipeline builder. You can even use nut-pipe to add middlewares to your AWS Lambda functions so check README for AWS Lambda usage.
 
 build pipeline with your middlewares easily. Visit below page for live demo.
 
@@ -334,19 +334,22 @@ const jsonBodyParser = async (event, context, next) => {
         throw new BadJsonResponse('invalid body, expected JSON');
     }
 
-    return next(...[...Object.values(parsedBody), context]);
+    return next(...Object.values(parsedBody));
 };
 
-const lambdaHandler = (firstName, lastName) => {
+const lambdaHandler = (firstName, lastName, services) => {
 
     return {
-        body: `Hello ${firstName} ${lastName}`,
+        body: services.greetingService.sayHello({ firstName, lastName })
         statusCode: 200,
     };
 };
 
 const mainAsync = async () => {
-  let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler]);
+
+  const services = { greetingService };
+
+  let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler], services);
 
   let args = { firstName: "kenan", lastName: "hancer" }
 

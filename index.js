@@ -21,9 +21,7 @@ const buildPipeline = (functions, services = undefined, index = 0) => {
 
             args.push(buildPipeline(functions, services, index + 1));
         } else if (isEndOfPipeline) {
-            if (nullParametersLength === 1) {
-                args.push(services);
-            }
+            args.push(services);
         }
 
         return functions[index].apply(null, args);

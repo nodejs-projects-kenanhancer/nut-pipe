@@ -1,13 +1,28 @@
 # nut-pipe
 
-a very simple middleware pipeline builder. You can even use nut-pipe to add middlewares to your AWS Lambda functions so check README for AWS Lambda usage.
+a very simple middleware pipeline builder. The aim of this package is wrapping any function with another function.
 
-build pipeline with your middlewares easily. Visit below page for live demo.
+You can even use nut-pipe to add middlewares to your AWS Lambda Function and Azure Function so check README for AWS Lambda Function or Azure Function usages.
+
+Visit below page for live demo.
 
 https://kenanhancer.com/2020/03/11/node-js-nut-pipe-usage/
 
 https://kenanhancer.com/2018/01/18/javascript-pipeline-demo-with-es6/
 
+# Documentation
+
+<br/>
+
+- [Getting started](#getting-started)
+    - [Install](#install)
+    - [Usage](#usage)
+    - [Basic Example](#basic-example)
+    - [Real life Example](#real-life-example)
+    - [Real life Example With All Aspects](#real-life-example-with-all-aspects)
+    - [Real life Example With nut.pipe](#real-life-example-with-nut.pipe)
+    - [AWS Lambda Function Example With nut.pipe](#aws-lambda-function-example-with-nut.pipe)
+    - [Azure Function Example With nut.pipe](#azure-function-example-with-nut.pipe)
 
 ## Install
 
@@ -19,7 +34,7 @@ $ npm i -S nut-pipe
 
 ## Usage
 
-Create your middlewares like the following code. According to the following code, there are three middlewares named middleware1, middleware2, middleware3 and 
+Create your middlewares like the following code. According to the following code, there are three middlewares named **middleware1**, **middleware2**, **middleware3** and 
 after pipeline is builded with ```const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);```, pipelineInvoker variable will be a function to call middlewares sequentially. In this case, when ```pipelineInvoker({ Person: person });``` function is called, firstly middleware1 will run, then middleware2, then middleware 3. 
 
 ## Basic Example
@@ -102,11 +117,11 @@ const greetingService = {
 
 Notice that we have only three functions, so you shouldn't think that you can handle all aspects in every functions, because you will have many functions, classes, modules etc. Every project will evolve soon.
 
-### Classic code
+## Real life Example With All Aspects
 
 I included all aspects in every function in this code example. Actually, this is very usual condition in many project :)
 But, this approach has a very big problem, developers shouldn't forget to write all these duplicated codes. So this approach cause code duplication clearly.
-In addition to this, if developer wants to change aspects of business logic for some functions, then they have to manually find and change them.
+In addition to this, if developer wants to change aspects of business logic for all or some of functions, then they have to manually change them.
 There are many other disadvantages as well. But, let's focus on the main idea :)
 
 **`app.js`**
@@ -188,9 +203,9 @@ console.log(result);
 
 
 
-### nut.pipe code
+## Real life Example With nut.pipe
 
-Notice that business logic is very clean code definetely this time. I didn't include any logging, exception or timing business logic in sayHello(), sayGoodbye() functions.
+Writing previous code with nut-pipe makes code clean. Notice that business logic is very clean code definetely this time. I didn't include any logging, exception or timing business logic in sayHello(), sayGoodbye() functions.
 
 **`app.js`**
 ```js
@@ -287,9 +302,9 @@ result = pipelineInvoker({
 console.log(result);
 ```
 
-### AWS Lambda Function Handler
+## AWS Lambda Function Example With nut.pipe
 
-If you have a lambda function, then you could use middleware logic as well
+If you have a AWS Lambda Function, then you could use middleware logic as well.
 
 **`app.js`**
 ```js
@@ -361,4 +376,132 @@ const mainAsync = async () => {
 };
 
 mainAsync();
+```
+
+## Azure Function Example With nut.pipe
+
+If you have an Azure Function like AWS Lambda Function, then you could use middleware logic in similar way.
+
+**`app.js`**
+```js
+
+const errorMiddleware = async (context, inputData, next) => {
+
+    let result;
+    try {
+
+        result = await next(context, inputData);
+
+    } catch (error) {
+
+        const { executionContext: { functionName, invocationId } } = context;
+
+        const log = { functionName, invocationId };
+        const logJson = JSON.stringify(log);
+
+        context.log.error(`ERROR: ${logJson}`, error);
+
+        throw error;
+    }
+
+    return result;
+};
+
+const corsMiddleware = async (context, inputData, next) => {
+
+    const response = await next(context, inputData);
+
+    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
+
+    if (type === 'httpTrigger') {
+        context.res = { status: 200, body: response, headers: { 'Access-Control-Allow-Origin': "*", "Access-Control-Allow-Credentials": false } };
+    }
+
+    return response;
+};
+
+const logMiddleware = async (context, inputData, next) => {
+
+    const { executionContext: { functionName, invocationId } } = context;
+
+    const log = { functionName, invocationId };
+    let logJson = JSON.stringify(log);
+
+    context.log.info(`ENTRY: ${logJson}`);
+
+    const result = await next(context, inputData);
+
+    context.log.info(`SUCCESS: ${logJson}`);
+
+    return result;
+};
+
+const timingMiddleware = async (context, inputData, next) => {
+
+    const startDate = new Date();
+
+    const result = await next(context, inputData);
+
+    const elapsedMilliseconds = new Date().getTime() - startDate.getTime();
+
+    const { executionContext: { functionName } } = context;
+
+    context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
+
+    return result;
+};
+
+const jsonParser = async (context, inputData, services, next) => {
+
+    let { executionContext: { functionName } } = context;
+    // const [azureFunctionName, triggerType] = functionName.split('-');
+    // const { handlers } = services;
+    // const handle = handlers[azureFunctionName];
+    // if (!handle) {
+    //     throw new Error(`${functionName} function can not be find.`);
+    // }
+
+    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
+
+    let handleData;
+
+    if (type === 'httpTrigger') {
+        handleData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
+    }
+    else if (type === 'eventGridTrigger') {
+        let { data } = inputData;
+        handleData = JSON.parse(data);
+    }
+    else if (type === 'queueTrigger') {
+        handleData = inputData;
+    }
+    else if (type === 'blobTrigger') {
+        handleData = JSON.parse(inputData.toString('utf8'));
+    }
+    else if (type === 'eventHubTrigger') {
+        handleData = inputData;
+    }
+
+    return next(...Object.values(handleData));
+};
+
+const azureFunctionHandler = (firstName, lastName, services) => {
+
+    return {
+        body: services.greetingService.sayHello({ firstName, lastName }),
+        statusCode: 200,
+    };
+};
+
+const services = { greetingService };
+
+let pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
+
+let args = { firstName: "kenan", lastName: "hancer" };
+
+let result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
+
+expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+expect(result.statusCode).toEqual(200);
 ```

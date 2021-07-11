@@ -1,4 +1,4 @@
-const buildPipeline = (functions, services = undefined, index = 0) => {
+const buildPipeline = (functions, services = {}, index = 0) => {
 
     let pipelineFunc = (...args) => {
 
@@ -21,7 +21,13 @@ const buildPipeline = (functions, services = undefined, index = 0) => {
 
             args.push(buildPipeline(functions, services, index + 1));
         } else if (isEndOfPipeline) {
-            args.push(services);
+            if (nullParametersLength > 1) {
+                args.push(...Array(nullParametersLength - 1).fill(null));
+            }
+
+            if (nullParametersLength >= 1) {
+                args.push(services);
+            }
         }
 
         return functions[index].apply(null, args);
@@ -30,4 +36,4 @@ const buildPipeline = (functions, services = undefined, index = 0) => {
     return pipelineFunc;
 };
 
-module.exports = { buildPipeline };
+module.exports = {buildPipeline};

@@ -1,166 +1,237 @@
-const { buildPipeline } = require("../index");
-const { middleware1, middleware2, middleware3, errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware } = require("./middlewares");
-const { greetingService } = require("./services");
-const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./aws");
-const { createInputDataForHttp, createContext: createAzureContext } = require("./azure");
+const {buildPipeline} = require("../index");
+const {
+    errorMidlleware,
+    logMiddleware,
+    dynamicFunctionCallerMiddleware
+} = require("./middlewares");
+const {greetingService} = require("./services");
 
 describe('NUT-PIPE tests', () => {
+    beforeAll(() => {
+        const mockMiddleware1 = jest.fn((context, next) => {
+            return next(context);
+        });
+
+        const mockMiddleware2 = jest.fn((context, next) => {
+            return next(context);
+        });
+
+        const mockMiddleware3 = jest.fn((context, services) => {
+            return services.greetingService.sayHello(context);
+        });
+
+        const services = {
+            greetingService: {
+                sayHello: jest.fn(({firstName, lastName}) => {
+                    return `Hello ${firstName} ${lastName}`;
+                })
+            }
+        };
+
+        Object.assign(this, {mockMiddleware1, mockMiddleware2, mockMiddleware3, services});
+    });
+
     it('should create a basic pipeline function', () => {
 
-        const mockMiddleware = jest.fn();
-
-        const basicMiddleware1 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware1 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware2 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware2 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware3 = (context, next) => {
-
-            mockMiddleware();
-
-            return next(context);
-        };
-
-        const basicMiddleware4 = (context) => {
-
-            mockMiddleware();
+        const mockMiddleware3 = jest.fn((context) => {
 
             return `Hello ${context.firstName} ${context.lastName}`;
-        };
+        });
 
-        const pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, basicMiddleware4]);
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
 
-        const person = { firstName: "kenan", lastName: "hancer" };
+        const person = {firstName: "kenan", lastName: "hancer"};
 
-        const response = pipelineInvoker(person);
+        const response = middlewareChainFunction(person);
 
-        expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
-
-        expect(mockMiddleware.mock.calls.length).toBe(4);
-    });
-
-    it('then create a basic pipeline function with services', () => {
-
-        const mockMiddleware = jest.fn();
-
-        const basicMiddleware1 = (context, services, next) => {
-
-            mockMiddleware();
-
-            return next(context);
-        };
-
-        const basicMiddleware2 = (context, services, next) => {
-
-            mockMiddleware();
-
-            return next(context);
-        };
-
-        const basicMiddleware3 = (context, next) => {
-
-            mockMiddleware();
-
-            return next(context);
-        };
-
-        const basicMiddleware4 = (context, services) => {
-
-            mockMiddleware();
-
-            return services.greetingService.sayHello(context);
-        };
-
-        const services = { greetingService };
-
-        const pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, basicMiddleware4], services);
-
-        const person = { firstName: "kenan", lastName: "hancer" };
-
-        const response = pipelineInvoker(person);
 
         expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
 
-        expect(mockMiddleware.mock.calls.length).toBe(4);
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(person, expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(person, expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(person);
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
     });
 
-    it('should throw error without passing arguments', () => {
+    it('should create a basic pipeline function with services', () => {
 
-        const mockMiddleware = jest.fn();
+        const {mockMiddleware1, mockMiddleware2, mockMiddleware3, services} = this;
 
-        const basicMiddleware1 = (context, services, next) => {
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3], services);
 
-            mockMiddleware();
+        const person = {firstName: "kenan", lastName: "hancer"};
 
-            return next(context);
+        const response = middlewareChainFunction(person);
+
+        expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(person, expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(person, expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(person, services);
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+
+        expect(services.greetingService.sayHello).toHaveBeenCalledTimes(1);
+
+        expect(services.greetingService.sayHello).toHaveBeenCalledWith(person);
+
+        expect(services.greetingService.sayHello).toHaveReturnedWith(response);
+    });
+
+    it('should work without parameters', () => {
+        const mockMiddleware1 = jest.fn((services, next) => {
+            return next();
+        });
+
+        const mockMiddleware2 = jest.fn((next) => {
+            return next();
+        });
+
+        const mockMiddleware3 = jest.fn((services) => {
+            return services.greetingService.sayHello({});
+        });
+
+        const services = {
+            greetingService: {
+                sayHello: jest.fn(({firstName, lastName}) => {
+                    return `Hello ${firstName} ${lastName}`;
+                })
+            }
         };
 
-        const basicMiddleware2 = (context, services, next) => {
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3], services);
 
-            mockMiddleware();
+        const response = middlewareChainFunction();
 
-            return next(context);
-        };
+        expect(response).toEqual(`Hello ${undefined} ${undefined}`);
 
-        const basicMiddleware3 = (context, next) => {
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
 
-            mockMiddleware();
+        expect(mockMiddleware1).toHaveBeenCalledWith(services, expect.any(Function));
 
-            return next(context);
-        };
+        expect(mockMiddleware1).toHaveReturnedWith(response);
 
-        const basicMiddleware4 = (context, services) => {
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
 
-            mockMiddleware();
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(Function));
 
-            return services.greetingService.sayHello(context);
-        };
+        expect(mockMiddleware2).toHaveReturnedWith(response);
 
-        const services = { greetingService };
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
 
-        const pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, basicMiddleware4], services);
+        expect(mockMiddleware3).toHaveBeenCalledWith(services);
 
-        try {
-            const person = { firstName: "kenan", lastName: "hancer" };
-
-            const response = pipelineInvoker();
-        } catch (error) {
-            expect(error.message).toContain('Cannot destructure property');
-        }
+        expect(mockMiddleware3).toHaveReturnedWith(response);
     });
 
     it('should create a new pipeline function from middlewares and return with extra two more fields', () => {
 
-        const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);
+        const mockMiddleware1 = (context, next) => {
 
-        const person = {
-            personId: 1,
-            firstName: "kenan",
-            lastName: "HANCER"
+            context.Person.city = "Istanbul";
+
+            return next(context);
         };
 
-        const response = pipelineInvoker({ Person: { ...person } });
+        const mockMiddleware2 = (context, next) => {
+
+            context.Person.email = 'kenanhancer@gmail.com';
+
+            return next(context);
+        };
+
+        const mockMiddleware3 = (context) => {
+
+            return context.Person;
+        };
+
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
+
+        const data = {
+            Person: {
+                personId: 1,
+                firstName: "kenan",
+                lastName: "HANCER"
+            }
+        };
+
+        const response = middlewareChainFunction(data);
 
         expect(response).toEqual({
-            ...person,
+            ...data.Person,
             city: expect.any(String),
             email: expect.any(String)
         });
     });
 
+    it('should set undefined value for missing parameters', function () {
+
+        const mockMiddleware1 = jest.fn((firstName, lastName, mail, age, next) => {
+            return next(firstName, lastName, mail, age);
+        });
+
+        const mockMiddleware2 = jest.fn((firstName, lastName, mail, age, services, next) => {
+            return next(firstName, lastName, mail, age);
+        });
+
+        const mockMiddleware3 = jest.fn((firstName, lastName, mail, age) => {
+            return {firstName, lastName, mail, age};
+        });
+
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3])
+
+        const data = {firstName: "kenan", lastName: "hancer", mail: "kenanhancer@gmail.com", age: 37};
+
+        const response = middlewareChainFunction(data.firstName, data.lastName, data.mail, data.age);
+
+        expect(response).toEqual(data);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        // expect(mockMiddleware1).
+    });
+
     it('test1', () => {
         const pipelineInvoker = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        let args = {firstName: "kenan", lastName: "hancer"}
 
         let result = pipelineInvoker({
             method: greetingService.sayHello,
@@ -203,7 +274,7 @@ describe('NUT-PIPE tests', () => {
 
         let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, greetingService.sayHello]);
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        let args = {firstName: "kenan", lastName: "hancer"}
 
         let result = pipelineInvoker(args);
 
@@ -246,7 +317,7 @@ describe('NUT-PIPE tests', () => {
 
         let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, sayHello]);
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        let args = {firstName: "kenan", lastName: "hancer"}
 
         let result = pipelineInvoker(args);
 
@@ -294,217 +365,5 @@ describe('NUT-PIPE tests', () => {
         expect(result).toEqual("Hello kenan hancer");
 
         expect(mockMiddleware.mock.calls.length).toBe(3);
-    });
-
-    it('AWS Lambda Function Test', async () => {
-        const mockMiddleware = jest.fn();
-
-        const corsMiddleware = async (event, context, next) => {
-
-            mockMiddleware();
-
-            const response = await next(event, context);
-
-            if (!response.headers) {
-                response.headers = {};
-            }
-
-            response.headers['Access-Control-Allow-Origin'] = '*';
-            response.headers['Access-Control-Allow-Credentials'] = true;
-
-            return response;
-        };
-
-        const logMiddleware = async (event, context, next) => {
-
-            mockMiddleware();
-
-            try {
-                console.debug(`logMiddleware: request received in ${context.functionName} lambda`, event);
-
-                return await next(event, context);
-            } catch (e) {
-                console.error(`logMiddleware: request failed in ${context.functionName} lambda`, event, e);
-
-                throw e;
-            }
-        };
-
-        const jsonBodyParser = async (event, context, next) => {
-
-            mockMiddleware();
-
-            let parsedBody;
-
-            try {
-                console.debug(`jsonParserMiddleware: parsing JSON in ${context.functionName}`, event);
-
-                parsedBody = JSON.parse(event.body);
-            } catch (e) {
-                console.error(`jsonParserMiddleware: failed to parse JSON in ${context.functionName}`, {}, e);
-
-                throw new BadJsonResponse('invalid body, expected JSON');
-            }
-
-            return next(...Object.values(parsedBody));
-        };
-
-        const awsLambdaHandler = (firstName, lastName, services) => {
-
-            return {
-                body: services.greetingService.sayHello({ firstName, lastName }),
-                statusCode: 200,
-            };
-        };
-
-        const services = { greetingService };
-
-        let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
-
-        let args = { firstName: "kenan", lastName: "hancer" };
-
-        let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createAwsContext());
-
-        expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
-
-        expect(result.statusCode).toEqual(200);
-
-        expect(mockMiddleware.mock.calls.length).toBe(3);
-    });
-
-    it('Azure Function Test', async () => {
-        const mockMiddleware = jest.fn();
-
-        const errorMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
-
-            let result;
-            try {
-
-                result = await next(context, inputData);
-
-            } catch (error) {
-
-                const { executionContext: { functionName, invocationId } } = context;
-
-                const log = { functionName, invocationId };
-                const logJson = JSON.stringify(log);
-
-                context.log.error(`ERROR: ${logJson}`, error);
-
-                throw error;
-            }
-
-            return result;
-        };
-
-        const corsMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
-
-            const response = await next(context, inputData);
-
-            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
-
-            if (type === 'httpTrigger') {
-                context.res = { status: 200, body: response, headers: { 'Access-Control-Allow-Origin': "*", "Access-Control-Allow-Credentials": false } };
-            }
-
-            return response;
-        };
-
-        const logMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
-
-            const { executionContext: { functionName, invocationId } } = context;
-
-            const log = { functionName, invocationId };
-            let logJson = JSON.stringify(log);
-
-            context.log.info(`ENTRY: ${logJson}`);
-
-            const result = await next(context, inputData);
-
-            context.log.info(`SUCCESS: ${logJson}`);
-
-            return result;
-        };
-
-        const timingMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
-
-            const startDate = new Date();
-
-            const result = await next(context, inputData);
-
-            const elapsedMilliseconds = new Date().getTime() - startDate.getTime();
-
-            const { executionContext: { functionName } } = context;
-
-            context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
-
-            return result;
-        };
-
-        const jsonParser = async (context, inputData, services, next) => {
-
-            mockMiddleware();
-
-            let { executionContext: { functionName } } = context;
-            // const [azureFunctionName, triggerType] = functionName.split('-');
-            // const { handlers } = services;
-            // const handle = handlers[azureFunctionName];
-            // if (!handle) {
-            //     throw new Error(`${functionName} function can not be find.`);
-            // }
-
-            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
-
-            let handleData;
-
-            if (type === 'httpTrigger') {
-                handleData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
-            }
-            else if (type === 'eventGridTrigger') {
-                let { data } = inputData;
-                handleData = JSON.parse(data);
-            }
-            else if (type === 'queueTrigger') {
-                handleData = inputData;
-            }
-            else if (type === 'blobTrigger') {
-                handleData = JSON.parse(inputData.toString('utf8'));
-            }
-            else if (type === 'eventHubTrigger') {
-                handleData = inputData;
-            }
-
-            return next(...Object.values(handleData));
-        };
-
-        const azureFunctionHandler = (firstName, lastName, services) => {
-
-            return {
-                body: services.greetingService.sayHello({ firstName, lastName }),
-                statusCode: 200,
-            };
-        };
-
-        const services = { greetingService };
-
-        let pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
-
-        let args = { firstName: "kenan", lastName: "hancer" };
-
-        let result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
-
-        expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
-
-        expect(result.statusCode).toEqual(200);
-
-        expect(mockMiddleware.mock.calls.length).toBe(5);
     });
 });

@@ -1,6 +1,6 @@
-const {buildPipeline} = require("../index");
-const {createAPIGatewayProxyEventV2, createContext: createAwsContext} = require("./aws");
-const {greetingService} = require("./services");
+const { buildPipeline } = require("../src/index");
+const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./aws");
+const { greetingService } = require("./services");
 
 describe('NUT-PIPE AWS Lambda Function tests', () => {
     it('AWS Lambda Function Test', async () => {
@@ -59,16 +59,16 @@ describe('NUT-PIPE AWS Lambda Function tests', () => {
         const awsLambdaHandler = (firstName, lastName, services) => {
 
             return {
-                body: services.greetingService.sayHello({firstName, lastName}),
+                body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
             };
         };
 
-        const services = {greetingService};
+        const services = { greetingService };
 
         let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
 
-        let args = {firstName: "kenan", lastName: "hancer"};
+        let args = { firstName: "kenan", lastName: "hancer" };
 
         let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createAwsContext());
 

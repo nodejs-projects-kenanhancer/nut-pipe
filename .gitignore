@@ -1,6 +1,15 @@
 .idea
 *.iml
 
+
+.webpack
+.vscode
+__blobstorage__
+__queuestorage__
+__azurite*
+.env*
+.npmrc
+
 # Logs
 logs
 *.log

@@ -1,10 +1,8 @@
-const {buildPipeline} = require("../index");
-const {
-    errorMidlleware,
-    logMiddleware,
-    dynamicFunctionCallerMiddleware
-} = require("./middlewares");
-const {greetingService} = require("./services");
+const { buildPipeline } = require("../src/index");
+const { middleware1, middleware2, middleware3, errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware } = require("./middlewares");
+const { greetingService } = require("./services");
+const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./aws");
+const { createInputDataForHttp, createContext: createAzureContext } = require("./azure");
 
 describe('NUT-PIPE tests', () => {
     beforeAll(() => {
@@ -22,13 +20,13 @@ describe('NUT-PIPE tests', () => {
 
         const services = {
             greetingService: {
-                sayHello: jest.fn(({firstName, lastName}) => {
+                sayHello: jest.fn(({ firstName, lastName }) => {
                     return `Hello ${firstName} ${lastName}`;
                 })
             }
         };
 
-        Object.assign(this, {mockMiddleware1, mockMiddleware2, mockMiddleware3, services});
+        Object.assign(this, { mockMiddleware1, mockMiddleware2, mockMiddleware3, services });
     });
 
     it('should create a basic pipeline function', () => {
@@ -50,7 +48,7 @@ describe('NUT-PIPE tests', () => {
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
 
-        const person = {firstName: "kenan", lastName: "hancer"};
+        const person = { firstName: "kenan", lastName: "hancer" };
 
         const response = middlewareChainFunction(person);
 
@@ -80,11 +78,11 @@ describe('NUT-PIPE tests', () => {
 
     it('should create a basic pipeline function with services', () => {
 
-        const {mockMiddleware1, mockMiddleware2, mockMiddleware3, services} = this;
+        const { mockMiddleware1, mockMiddleware2, mockMiddleware3, services } = this;
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3], services);
 
-        const person = {firstName: "kenan", lastName: "hancer"};
+        const person = { firstName: "kenan", lastName: "hancer" };
 
         const response = middlewareChainFunction(person);
 
@@ -130,7 +128,7 @@ describe('NUT-PIPE tests', () => {
 
         const services = {
             greetingService: {
-                sayHello: jest.fn(({firstName, lastName}) => {
+                sayHello: jest.fn(({ firstName, lastName }) => {
                     return `Hello ${firstName} ${lastName}`;
                 })
             }
@@ -212,12 +210,12 @@ describe('NUT-PIPE tests', () => {
         });
 
         const mockMiddleware3 = jest.fn((firstName, lastName, mail, age) => {
-            return {firstName, lastName, mail, age};
+            return { firstName, lastName, mail, age };
         });
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3])
 
-        const data = {firstName: "kenan", lastName: "hancer", mail: "kenanhancer@gmail.com", age: 37};
+        const data = { firstName: "kenan", lastName: "hancer", mail: "kenanhancer@gmail.com", age: 37 };
 
         const response = middlewareChainFunction(data.firstName, data.lastName, data.mail, data.age);
 
@@ -231,7 +229,7 @@ describe('NUT-PIPE tests', () => {
     it('test1', () => {
         const pipelineInvoker = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
 
-        let args = {firstName: "kenan", lastName: "hancer"}
+        let args = { firstName: "kenan", lastName: "hancer" }
 
         let result = pipelineInvoker({
             method: greetingService.sayHello,
@@ -274,7 +272,7 @@ describe('NUT-PIPE tests', () => {
 
         let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, greetingService.sayHello]);
 
-        let args = {firstName: "kenan", lastName: "hancer"}
+        let args = { firstName: "kenan", lastName: "hancer" }
 
         let result = pipelineInvoker(args);
 
@@ -317,7 +315,7 @@ describe('NUT-PIPE tests', () => {
 
         let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, sayHello]);
 
-        let args = {firstName: "kenan", lastName: "hancer"}
+        let args = { firstName: "kenan", lastName: "hancer" }
 
         let result = pipelineInvoker(args);
 

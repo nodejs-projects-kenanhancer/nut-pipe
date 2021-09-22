@@ -1,6 +1,6 @@
-const {buildPipeline} = require("../index");
-const {createInputDataForHttp, createContext: createAzureContext} = require("./azure");
-const {greetingService} = require("./services");
+const { buildPipeline } = require("../src/index");
+const { createInputDataForHttp, createContext: createAzureContext } = require("./azure");
+const { greetingService } = require("./services");
 
 describe('NUT-PIPE Azure Function tests', () => {
     it('Azure Function Test', async () => {
@@ -17,9 +17,9 @@ describe('NUT-PIPE Azure Function tests', () => {
 
             } catch (error) {
 
-                const {executionContext: {functionName, invocationId}} = context;
+                const { executionContext: { functionName, invocationId } } = context;
 
-                const log = {functionName, invocationId};
+                const log = { functionName, invocationId };
                 const logJson = JSON.stringify(log);
 
                 context.log.error(`ERROR: ${logJson}`, error);
@@ -36,13 +36,13 @@ describe('NUT-PIPE Azure Function tests', () => {
 
             const response = await next(context, inputData);
 
-            const {type} = context.bindingDefinitions.find(def => def.direction === 'in');
+            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
 
             if (type === 'httpTrigger') {
                 context.res = {
                     status: 200,
                     body: response,
-                    headers: {'Access-Control-Allow-Origin': "*", "Access-Control-Allow-Credentials": false}
+                    headers: { 'Access-Control-Allow-Origin': "*", "Access-Control-Allow-Credentials": false }
                 };
             }
 
@@ -53,9 +53,9 @@ describe('NUT-PIPE Azure Function tests', () => {
 
             mockMiddleware();
 
-            const {executionContext: {functionName, invocationId}} = context;
+            const { executionContext: { functionName, invocationId } } = context;
 
-            const log = {functionName, invocationId};
+            const log = { functionName, invocationId };
             let logJson = JSON.stringify(log);
 
             context.log.info(`ENTRY: ${logJson}`);
@@ -77,7 +77,7 @@ describe('NUT-PIPE Azure Function tests', () => {
 
             const elapsedMilliseconds = new Date().getTime() - startDate.getTime();
 
-            const {executionContext: {functionName}} = context;
+            const { executionContext: { functionName } } = context;
 
             context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
 
@@ -88,7 +88,7 @@ describe('NUT-PIPE Azure Function tests', () => {
 
             mockMiddleware();
 
-            let {executionContext: {functionName}} = context;
+            let { executionContext: { functionName } } = context;
             // const [azureFunctionName, triggerType] = functionName.split('-');
             // const { handlers } = services;
             // const handle = handlers[azureFunctionName];
@@ -96,14 +96,14 @@ describe('NUT-PIPE Azure Function tests', () => {
             //     throw new Error(`${functionName} function can not be find.`);
             // }
 
-            const {type} = context.bindingDefinitions.find(def => def.direction === 'in');
+            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
 
             let handleData;
 
             if (type === 'httpTrigger') {
-                handleData = {...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query}
+                handleData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
             } else if (type === 'eventGridTrigger') {
-                let {data} = inputData;
+                let { data } = inputData;
                 handleData = JSON.parse(data);
             } else if (type === 'queueTrigger') {
                 handleData = inputData;
@@ -119,16 +119,16 @@ describe('NUT-PIPE Azure Function tests', () => {
         const azureFunctionHandler = (firstName, lastName, services) => {
 
             return {
-                body: services.greetingService.sayHello({firstName, lastName}),
+                body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
             };
         };
 
-        const services = {greetingService};
+        const services = { greetingService };
 
         let pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
 
-        let args = {firstName: "kenan", lastName: "hancer"};
+        let args = { firstName: "kenan", lastName: "hancer" };
 
         let result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
 

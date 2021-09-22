@@ -19,16 +19,16 @@ export type AsyncBasicMiddlewareWithServices<TEvent = any, TServices = Record<st
     never;
 
 export type AsyncLambdaHandler<TEvent = any, TResult = any> =
-    (event: TEvent, context: Context, callback?: Callback<TResult>) => Promise<TResult | Error | unknown>;
+    (event: TEvent, context: Context, callback?: Callback<TResult>) => Promise<TResult | Error>;
 
-export type AsyncLambdaMiddleware<TEvent = any, T = AsyncLambdaHandler<TEvent>> =
-    T extends AsyncLambdaHandler<TEvent, infer TResult> ?
-    (event: TEvent, context: Context, callback: Callback<TResult>, next: T) => void | Promise<TResult | Error | unknown> :
+export type AsyncLambdaMiddleware<TEvent = any, TResult = any, T = AsyncLambdaHandler<TEvent, TResult>> =
+    T extends AsyncLambdaHandler<TEvent, TResult> ?
+    (event: TEvent, context: Context, callback: Callback<TResult>, next: T) => void | Promise<TResult | Error> :
     never;
 
-export type AsyncLambdaMiddlewareWithServices<TEvent = any, TServices = Record<string, any>, T = AsyncLambdaHandler<TEvent>> =
-    T extends AsyncLambdaHandler<TEvent, infer TResult> ?
-    (event: TEvent, context: Context, callback: Callback<TResult>, services: TServices, next: T) => void | Promise<TResult | Error | unknown> :
+export type AsyncLambdaMiddlewareWithServices<TEvent = any, TResult = any, TServices = Record<string, any>, T = AsyncLambdaHandler<TEvent>> =
+    T extends AsyncLambdaHandler<TEvent, TResult> ?
+    (event: TEvent, context: Context, callback: Callback<TResult>, services: TServices, next: T) => void | Promise<TResult | Error> :
     never;
 
 export type AsyncHandler = AsyncBasicHandler & AsyncLambdaHandler;

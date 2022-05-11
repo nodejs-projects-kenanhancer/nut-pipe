@@ -1,47 +1,27 @@
-// Type definitions for nut-pipe 1.1
-// Project: https://github.com/nodejs-projects-kenanhancer/nut-pipe
-// Definitions by: kenan hancer <https://github.com/kenanhancer>
-// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
+import { Context as AzureContext } from '@azure/functions';
+import { Context as AwsContext, EventBridgeEvent, APIGatewayProxyEvent, APIGatewayProxyEventV2, APIGatewayProxyResult, APIGatewayProxyResultV2, SQSEvent, SNSEvent, SESEvent, S3Event, S3BatchEvent, SecretsManagerRotationEvent, DynamoDBStreamEvent, MSKEvent, ALBEvent, KinesisStreamEvent } from 'aws-lambda';
+
+export type Append<A extends unknown[], B extends unknown[] = []> = A extends [...infer Params] ? B extends [...infer Params2] ? [...Params, ...Params2] : never : never;
+
+export type MiddlewareServices<T = unknown> = T & {};
+
+export type NextMiddleware<TParameters extends unknown[], TResult = any> = (...args: TParameters) => void | Promise<void> | Promise<TResult>;
+
+export type Middleware<TParameters extends unknown[], TServices = unknown, TResult = any> = (...args: Append<TParameters, [services: MiddlewareServices<TServices>, next: NextMiddleware<TParameters>]>) => ReturnType<NextMiddleware<TParameters, TResult>>;
+
+export type MiddlewareType<T extends (...args: any[]) => any> = T extends (...args: [...infer I, infer _, infer K]) => any ? K extends NextMiddleware ? I extends Parameters<K> ? T : never : never : never;
+
+// Azure
+export type AzureMiddlewareDefaultParameters<TParameters extends unknown[] = [], TInput = any> = Append<[context: AzureContext, event: TInput], TParameters>;
+
+export type AzureDefaultMiddleware<TParameters extends unknown[] = AzureMiddlewareDefaultParameters, TServices = unknown, TResult = any> = Middleware<AzureMiddlewareDefaultParameters<TParameters>, TServices, TResult>;
+
+// Aws
+export type AwsEvent<TEvent = never> = TEvent | APIGatewayProxyEvent | APIGatewayProxyEventV2 | EventBridgeEvent<string, any> | SQSEvent | SNSEvent | SESEvent | S3Event | S3BatchEvent | SecretsManagerRotationEvent | DynamoDBStreamEvent | MSKEvent | ALBEvent | KinesisStreamEvent;
+
+export type AwsMiddlewareDefaultParameters<TParameters extends unknown[] = [], TEvent = AwsEvent> = Append<[event: TEvent, context: AwsContext], TParameters>;
+
+export type AwsDefaultMiddleware<TParameters extends unknown[] = AwsMiddlewareDefaultParameters, TServices = unknown, TResult = APIGatewayProxyResultV2<APIGatewayProxyResult>> = Middleware<AwsMiddlewareDefaultParameters<TParameters>, TServices, TResult>;
 
 
-import { Context, Callback, APIGatewayProxyEvent, APIGatewayProxyEventV2, APIGatewayProxyResultV2, APIGatewayProxyResult, EventBridgeEvent } from "aws-lambda";
-
-export type AsyncBasicHandler<TEvent = any, TResult = any> = (event: TEvent) => Promise<TResult | Error>;
-
-export type AsyncBasicMiddleware<TEvent = any, T extends AsyncBasicHandler = AsyncBasicHandler<TEvent>> =
-    T extends AsyncBasicHandler<TEvent, infer TResult> ?
-    (event: TEvent, next: T) => Promise<TResult> :
-    never;
-
-export type AsyncBasicMiddlewareWithServices<TEvent = any, TServices = Record<string, any>, T extends AsyncBasicHandler = AsyncBasicHandler<TEvent>> =
-    T extends AsyncBasicHandler<TEvent, infer TResult> ?
-    (event: TEvent, services: TServices, next: T) => Promise<TResult | Error> :
-    never;
-
-export type EventType = APIGatewayProxyEvent | APIGatewayProxyEventV2 | EventBridgeEvent<string, any> | unknown;
-
-export type ResultType = APIGatewayProxyResultV2 | APIGatewayProxyResult | unknown;
-
-export type AsyncLambdaHandler<TEvent extends EventType = APIGatewayProxyEventV2, TResult extends ResultType = APIGatewayProxyResultV2> =
-    (event: TEvent, context: Context, callback?: Callback<TResult>) => Promise<TResult | Error | void>;
-
-export type AsyncLambdaMiddleware<TEvent extends EventType = APIGatewayProxyEventV2, TResult extends ResultType = APIGatewayProxyResultV2, T = AsyncLambdaHandler<TEvent, TResult>> =
-    T extends AsyncLambdaHandler<TEvent, TResult> ?
-    (event: TEvent, context: Context, callback?: Callback<TResult>, next?: T) => void | Promise<TResult | Error | void> :
-    never;
-
-export type AsyncLambdaMiddlewareWithServices<TEvent extends EventType = APIGatewayProxyEventV2, TResult extends ResultType = APIGatewayProxyResultV2, TServices = Record<string, any>, T = AsyncLambdaHandler<TEvent>> =
-    T extends AsyncLambdaHandler<TEvent, TResult> ?
-    (event: TEvent, context: Context, callback?: Callback<TResult>, services?: TServices, next?: T) => void | Promise<TResult | Error | void> :
-    never;
-
-export type AsyncHandler = AsyncBasicHandler & AsyncLambdaHandler;
-
-export type AsyncMiddleware<T = never> =
-    AsyncBasicMiddleware |
-    AsyncBasicMiddlewareWithServices |
-    AsyncLambdaMiddleware<any, any> |
-    AsyncLambdaMiddlewareWithServices<any, any> |
-    T;
-
-export function buildPipeline(functions: Array<AsyncMiddleware<any>>, services?: Record<string, any>, index?: number): AsyncHandler;
+export function buildPipeline<TParameters extends unknown[], TServices = unknown>(functions: Array<Middleware<TParameters>>, services?: MiddlewareServices<TServices>, index?: number): NextMiddleware<TParameters>;

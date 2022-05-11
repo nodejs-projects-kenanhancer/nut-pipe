@@ -1,14 +1,18 @@
 {
   "name": "nut-pipe",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "a very simple middleware pipeline builder",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
     "build": "webpack",
-    "predeploy": "npm run build",
+    "build:dev": "NODE_ENV=development npm run build",
+    "build:watch": "npm link && NODE_ENV=development webpack watch",
+    "predeploy": "npm install && NODE_ENV=production npm run build",
     "deploy": "npm publish"
   },
   "repository": {
@@ -40,10 +44,11 @@
     "npm": ">=5.0.0"
   },
   "devDependencies": {
-    "copy-webpack-plugin": "^9.0.1",
-    "jest": "^27.2.1",
-    "ts-loader": "^9.2.6",
-    "webpack-cli": "^4.8.0",
+    "@azure/functions": "^3.0.0",
+    "copy-webpack-plugin": "^10.2.4",
+    "jest": "^28.1.0",
+    "ts-loader": "^9.3.0",
+    "webpack-cli": "^4.9.2",
     "webpack-node-externals": "^3.0.0"
   }
 }

@@ -36,4 +36,4 @@ const buildPipeline = (functions, services = {}, index = 0) => {
     return pipelineFunc;
 };
 
-module.exports = {buildPipeline};
+module.exports = { buildPipeline };

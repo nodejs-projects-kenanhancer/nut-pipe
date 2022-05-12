@@ -1,6 +1,6 @@
 # nut-pipe
 
-a very simple middleware pipeline builder. The aim of this package is wrapping any function with another function.
+The aim of this package is wrapping any function with another function.
 
 You can even use nut-pipe to add middlewares to your AWS Lambda Function and Azure Function so check README for AWS Lambda Function or Azure Function usages.
 
@@ -17,12 +17,12 @@ https://kenanhancer.com/2018/01/18/javascript-pipeline-demo-with-es6/
 - [Getting started](#getting-started)
     - [Install](#install)
     - [Usage](#usage)
+    - [AWS Lambda Function Example With nut.pipe](#aws-lambda-function-example-with-nut.pipe)
+    - [Azure Function Example With nut.pipe](#azure-function-example-with-nut.pipe)
     - [Basic Example](#basic-example)
     - [Real life Example](#real-life-example)
     - [Real life Example With All Aspects](#real-life-example-with-all-aspects)
     - [Real life Example With nut.pipe](#real-life-example-with-nut.pipe)
-    - [AWS Lambda Function Example With nut.pipe](#aws-lambda-function-example-with-nut.pipe)
-    - [Azure Function Example With nut.pipe](#azure-function-example-with-nut.pipe)
 
 ## Install
 
@@ -32,18 +32,368 @@ Install the package.
 $ npm i -S nut-pipe
 ```
 
-## Usage
+
+
+## AWS Lambda Function Example With nut.pipe
+
+If you have a AWS Lambda Function, then you could use middleware logic as well.
+
+**`app.js`**
+```js
+import { buildPipeline } from 'nut-pipe';
+// const { buildPipeline } = require("nut-pipe");
+
+const corsMiddleware = async (event, context, next) => {
+
+    const response = await next(event, context);
+
+    if (!response.headers) {
+        response.headers = {};
+    }
+
+    response.headers['Access-Control-Allow-Origin'] = '*';
+    response.headers['Access-Control-Allow-Credentials'] = true;
+
+    return response;
+};
+
+const logMiddleware = async (event, context, next) => {
+
+    try {
+        console.debug(`logMiddleware: request received in ${context.functionName} lambda`, event);
+
+        return await next(event, context);
+    } catch (e) {
+        console.error(`logMiddleware: request failed in ${context.functionName} lambda`, event, e);
+
+        throw e;
+    }
+};
+
+const jsonBodyParser = async (event, context, next) => {
+
+    let parsedBody;
+
+    try {
+        console.debug(`jsonParserMiddleware: parsing JSON in ${context.functionName}`, event);
+
+        parsedBody = JSON.parse(event.body);
+    } catch (e) {
+        console.error(`jsonParserMiddleware: failed to parse JSON in ${context.functionName}`, {}, e);
+
+        throw new BadJsonResponse('invalid body, expected JSON');
+    }
+
+    return next(...Object.values(parsedBody));
+};
+
+const lambdaHandler = (firstName, lastName, services) => {
+
+    return {
+      statusCode: 200,
+      body: services.greetingService.sayHello({ firstName, lastName })
+    };
+};
+
+const mainAsync = async () => {
+
+  const services = { greetingService };
+
+  const pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler], services);
+
+  const args = { firstName: "kenan", lastName: "hancer" };
+
+  const result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
+
+  expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+  expect(result.statusCode).toEqual(200);
+};
+
+mainAsync();
+```
+
+## AWS Lambda Function TypeScript Example With nut.pipe
+
+**`app.ts`**
+```ts
+import { AwsDefaultMiddleware, isAwsEvent } from 'nut-pipe';
+
+type MiddlewareServices<T = {}> = T & {
+    elapsedMilliseconds?: number;
+    validateRequest?: boolean;
+    validateResponse?: boolean;
+};
+
+// Aws Lambda Function Middleware
+{
+    const errorMiddleware: AwsDefaultMiddleware = async (event, context, services, next) => {
+
+        return await next(event, context);
+    };
+
+    const corsMiddleware: AwsDefaultMiddleware = async (event, context, _, next) => {
+
+        return await next(event, context);
+    };
+
+    const logMiddleware: AwsDefaultMiddleware<'All', [], MiddlewareServices> = async (event, context, services, next) => {
+
+        console.log(services.elapsedMilliseconds);
+
+        return await next(event, context);
+    };
+
+    const timingMiddleware: AwsDefaultMiddleware = async (event, context, services, next) => {
+
+        return await next(event, context);
+    };
+
+    const jsonParser: AwsDefaultMiddleware = async (event, context, services, next) => {
+
+        let data;
+
+        if (isAwsEvent<'APIGatewayProxyEvent'>(event, 'path')
+            || isAwsEvent<'APIGatewayProxyEventV2'>(event, 'rawPath')
+            || isAwsEvent<'ALBEvent'>(event, 'body')) {
+
+            let parsedBody;
+            try { parsedBody = event.body && JSON.parse(event.body); }
+            catch (error: any) { throw new Error('invalid body, expected JSON'); }
+
+            data = parsedBody;
+
+        } else if (isAwsEvent<'EventBridgeEvent'>(event, 'detail-type')) {
+
+            data = event.detail;
+
+        } else if (isAwsEvent<'SQSEvent'>(event, 'Records')
+            || isAwsEvent<'SNSEvent'>(event, 'Records')
+            || isAwsEvent<'SESEvent'>(event, 'Records')
+            || isAwsEvent<'S3Event'>(event, 'Records')
+            || isAwsEvent<'DynamoDBStreamEvent'>(event, 'Records')
+            || isAwsEvent<'KinesisStreamEvent'>(event, 'Records')) {
+
+            data = event.Records;
+
+        } else if (isAwsEvent<'MSKEvent'>(event, 'records')) {
+
+            data = event.records;
+        }
+
+        return await next(data, context);
+    };
+
+    const awsLambdaFunctionTriggeredByEventBridgeMiddleware: AwsDefaultMiddleware<'EventBridgeEvent'> = async (event, context, a1) => {
+
+        const message = `Event detail-type is ${event['detail-type']}`;
+
+        return { statusCode: 200, body: message };
+    };
+}
+```
+
+
+## Azure Function Example With nut.pipe
+
+If you have an Azure Function like AWS Lambda Function, then you could use middleware logic in similar way.
+
+**`app.js`**
+```js
+import { buildPipeline } from 'nut-pipe';
+// const { buildPipeline } = require("nut-pipe");
+
+const errorMiddleware = async (context, event, next) => {
+
+    let result;
+    try {
+
+        result = await next(context, event);
+
+    } catch (error) {
+
+        const { executionContext: { functionName, invocationId } } = context;
+
+        const log = { functionName, invocationId };
+        const logJson = JSON.stringify(log);
+
+        context.log.error(`ERROR: ${logJson}`, error);
+
+        throw error;
+    }
+
+    return result;
+};
+
+const corsMiddleware = async (context, event, next) => {
+
+    const response = await next(context, event);
+
+    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
+
+    if (type === 'httpTrigger') {
+        context.res = {
+          status: 200, 
+          body: response, 
+          headers: {
+            "Access-Control-Allow-Origin": "*", 
+            "Access-Control-Allow-Credentials": false 
+          }
+        };
+    }
+
+    return response;
+};
+
+const logMiddleware = async (context, event, next) => {
+
+    const { executionContext: { functionName, invocationId } } = context;
+
+    const log = { functionName, invocationId };
+
+    let logJson = JSON.stringify(log);
+
+    context.log.info(`ENTRY: ${logJson}`);
+
+    const result = await next(context, event);
+
+    context.log.info(`SUCCESS: ${logJson}`);
+
+    return result;
+};
+
+const timingMiddleware = async (context, event, next) => {
+
+    const startDate = new Date();
+
+    const result = await next(context, event);
+
+    const elapsedMilliseconds = new Date().getTime() - startDate.getTime();
+
+    const { executionContext: { functionName } } = context;
+
+    context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
+
+    return result;
+};
+
+const jsonParser = async (context, event, services, next) => {
+
+    let { executionContext: { functionName } } = context;
+
+    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
+
+    let handleData;
+
+    if (type === 'httpTrigger') {
+        handleData = { ...event.body, ...event.headers, ...event.params, ...event.query }
+    }
+    else if (type === 'eventGridTrigger') {
+        let { data } = event;
+        handleData = JSON.parse(data);
+    }
+    else if (type === 'queueTrigger') {
+        handleData = event;
+    }
+    else if (type === 'blobTrigger') {
+        handleData = JSON.parse(event.toString('utf8'));
+    }
+    else if (type === 'eventHubTrigger') {
+        handleData = event;
+    }
+
+    return next(...Object.values(handleData));
+};
+
+const azureFunctionHandler = (firstName, lastName, services) => {
+
+    return {
+      statusCode: 200,
+      body: services.greetingService.sayHello({ firstName, lastName })
+    };
+};
+
+const mainAsync = async () => {
+
+  const services = { greetingService };
+
+  const pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
+
+  const args = { firstName: "kenan", lastName: "hancer" };
+
+  const result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
+
+  expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+  expect(result.statusCode).toEqual(200);
+};
+
+mainAsync();
+```
+
+## Azure Function TypeScript Example With nut.pipe
+
+**`app.ts`**
+```ts
+import { AzureDefaultMiddleware } from 'nut-pipe';
+
+type MiddlewareServices<T = {}> = T & {
+    elapsedMilliseconds?: number;
+    validateRequest?: boolean;
+    validateResponse?: boolean;
+};
+
+// Azure Function AzureDefaultMiddleware
+{
+    const errorMiddleware: AzureDefaultMiddleware = async (context, event, services, next) => {
+
+        return await next(context, event);
+    };
+
+    const corsMiddleware: AzureDefaultMiddleware = async (context, event, _, next) => {
+
+        return await next(context, event);
+    };
+
+    const logMiddleware: AzureDefaultMiddleware<[], MiddlewareServices> = async (context, event, services, next) => {
+
+        console.log(services.elapsedMilliseconds);
+
+        return await next(context, event);
+    };
+
+    const timingMiddleware: AzureDefaultMiddleware = async (context, event, services, next) => {
+
+        return await next(context, event);
+    };
+
+    const jsonParser: AzureDefaultMiddleware = async (context, event, services, next) => {
+
+        return await next(context, event);
+    };
+
+    const azureFunctionMiddleware: AzureDefaultMiddleware = async (context, event) => {
+
+        return { status: 200, body: 'Hello world!' };
+    };
+}
+```
+
+## Basic Example
+
+### Usage
 
 Create your middlewares like the following code. According to the following code, there are three middlewares named **middleware1**, **middleware2**, **middleware3** and 
 after pipeline is builded with ```const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);```, pipelineInvoker variable will be a function to call middlewares sequentially. In this case, when ```pipelineInvoker({ Person: person });``` function is called, firstly middleware1 will run, then middleware2, then middleware 3. 
-
-## Basic Example
 
 Live demo
 https://kenanhancer.com/2018/01/18/javascript-pipeline-demo-with-es6/
 
 **`app.js`**
 ```js
+import { buildPipeline } from 'nut-pipe';
+// const { buildPipeline } = require("nut-pipe");
+
 const middleware1 = (context, next) => {
 
   const person = JSON.stringify(context.Person);
@@ -78,11 +428,7 @@ const middleware3 = (context, next) => {
 
 const pipelineInvoker = buildPipeline([middleware1, middleware2, middleware3]);
 
-const person = {
-  personId: 1,
-  firstName: "kenan",
-  lastName: "HANCER"
-};
+const person = { personId: 1, firstName: "kenan", lastName: "HANCER" };
 
 pipelineInvoker({ Person: person });
 ```
@@ -96,9 +442,7 @@ Let's think a scenario like below greeting service business logic. It looks very
 
 ```js
 const helper = {
-  getFullName: ({firstName, lastName})=>{
-    return `${firstName} ${lastName}`;
-  }
+  getFullName: ({firstName, lastName})=> `${firstName} ${lastName}`
 };
 
 const greetingService = {
@@ -127,9 +471,7 @@ There are many other disadvantages as well. But, let's focus on the main idea :)
 **`app.js`**
 ```js
 const helper = {
-  getFullName: ({firstName, lastName})=>{
-    return `${firstName} ${lastName}`;
-  }
+  getFullName: ({firstName, lastName})=> `${firstName} ${lastName}`
 };
 
 const greetingService = {
@@ -189,15 +531,14 @@ const greetingService = {
 
 
 
-let result = greetingService.sayHello({ firstName: "kenan", lastName: "hancer" });
+const result1 = greetingService.sayHello({ firstName: "kenan", lastName: "hancer" });
 
-console.log(result);
+console.log(result1);
 
-console.log();
 
-result = greetingService.sayGoodbye({ firstName: "kenan", lastName: "hancer" });
+const result2 = greetingService.sayGoodbye({ firstName: "kenan", lastName: "hancer" });
 
-console.log(result);
+console.log(result2);
 ```
 
 
@@ -209,14 +550,13 @@ Writing previous code with nut-pipe makes code clean. Notice that business logic
 
 **`app.js`**
 ```js
-const { buildPipeline } = require("nut-pipe");
+import { buildPipeline } from 'nut-pipe';
+// const { buildPipeline } = require("nut-pipe");
 
 
 /////////////////BUSINESS LOGIC///////////////////////////
 const helper = {
-  getFullName: ({firstName, lastName})=>{
-    return `${firstName} ${lastName}`;
-  }
+  getFullName: ({firstName, lastName})=> `${firstName} ${lastName}`
 };
 
 const greetingService = {
@@ -287,221 +627,12 @@ const dynamicFunctionCallerMiddleware = (context, next) => {
 const pipelineInvoker = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
 
 
-let result = pipelineInvoker({
-  method: greetingService.sayHello,
-  args: { firstName: "kenan", lastName: "hancer" }
-});
+const result1 = pipelineInvoker({ method: greetingService.sayHello, args: { firstName: "kenan", lastName: "hancer" } });
 
-console.log(result);
+console.log(result1);
 
-result = pipelineInvoker({
-  method: greetingService.sayGoodbye,
-  args: { firstName: "kenan", lastName: "hancer" }
-});
 
-console.log(result);
-```
+const result2 = pipelineInvoker({ method: greetingService.sayGoodbye, args: { firstName: "kenan", lastName: "hancer" } });
 
-## AWS Lambda Function Example With nut.pipe
-
-If you have a AWS Lambda Function, then you could use middleware logic as well.
-
-**`app.js`**
-```js
-const corsMiddleware = async (event, context, next) => {
-
-    const response = await next(event, context);
-
-    if (!response.headers) {
-        response.headers = {};
-    }
-
-    response.headers['Access-Control-Allow-Origin'] = '*';
-    response.headers['Access-Control-Allow-Credentials'] = true;
-
-    return response;
-};
-
-const logMiddleware = async (event, context, next) => {
-
-    try {
-        console.debug(`logMiddleware: request received in ${context.functionName} lambda`, event);
-
-        return await next(event, context);
-    } catch (e) {
-        console.error(`logMiddleware: request failed in ${context.functionName} lambda`, event, e);
-
-        throw e;
-    }
-};
-
-const jsonBodyParser = async (event, context, next) => {
-
-    let parsedBody;
-
-    try {
-        console.debug(`jsonParserMiddleware: parsing JSON in ${context.functionName}`, event);
-
-        parsedBody = JSON.parse(event.body);
-    } catch (e) {
-        console.error(`jsonParserMiddleware: failed to parse JSON in ${context.functionName}`, {}, e);
-
-        throw new BadJsonResponse('invalid body, expected JSON');
-    }
-
-    return next(...Object.values(parsedBody));
-};
-
-const lambdaHandler = (firstName, lastName, services) => {
-
-    return {
-        body: services.greetingService.sayHello({ firstName, lastName })
-        statusCode: 200,
-    };
-};
-
-const mainAsync = async () => {
-
-  const services = { greetingService };
-
-  let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, lambdaHandler], services);
-
-  let args = { firstName: "kenan", lastName: "hancer" }
-
-  let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createContext());
-
-  expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
-
-  expect(result.statusCode).toEqual(200);
-};
-
-mainAsync();
-```
-
-## Azure Function Example With nut.pipe
-
-If you have an Azure Function like AWS Lambda Function, then you could use middleware logic in similar way.
-
-**`app.js`**
-```js
-
-const errorMiddleware = async (context, inputData, next) => {
-
-    let result;
-    try {
-
-        result = await next(context, inputData);
-
-    } catch (error) {
-
-        const { executionContext: { functionName, invocationId } } = context;
-
-        const log = { functionName, invocationId };
-        const logJson = JSON.stringify(log);
-
-        context.log.error(`ERROR: ${logJson}`, error);
-
-        throw error;
-    }
-
-    return result;
-};
-
-const corsMiddleware = async (context, inputData, next) => {
-
-    const response = await next(context, inputData);
-
-    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
-
-    if (type === 'httpTrigger') {
-        context.res = { status: 200, body: response, headers: { 'Access-Control-Allow-Origin': "*", "Access-Control-Allow-Credentials": false } };
-    }
-
-    return response;
-};
-
-const logMiddleware = async (context, inputData, next) => {
-
-    const { executionContext: { functionName, invocationId } } = context;
-
-    const log = { functionName, invocationId };
-    let logJson = JSON.stringify(log);
-
-    context.log.info(`ENTRY: ${logJson}`);
-
-    const result = await next(context, inputData);
-
-    context.log.info(`SUCCESS: ${logJson}`);
-
-    return result;
-};
-
-const timingMiddleware = async (context, inputData, next) => {
-
-    const startDate = new Date();
-
-    const result = await next(context, inputData);
-
-    const elapsedMilliseconds = new Date().getTime() - startDate.getTime();
-
-    const { executionContext: { functionName } } = context;
-
-    context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
-
-    return result;
-};
-
-const jsonParser = async (context, inputData, services, next) => {
-
-    let { executionContext: { functionName } } = context;
-    // const [azureFunctionName, triggerType] = functionName.split('-');
-    // const { handlers } = services;
-    // const handle = handlers[azureFunctionName];
-    // if (!handle) {
-    //     throw new Error(`${functionName} function can not be find.`);
-    // }
-
-    const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
-
-    let handleData;
-
-    if (type === 'httpTrigger') {
-        handleData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
-    }
-    else if (type === 'eventGridTrigger') {
-        let { data } = inputData;
-        handleData = JSON.parse(data);
-    }
-    else if (type === 'queueTrigger') {
-        handleData = inputData;
-    }
-    else if (type === 'blobTrigger') {
-        handleData = JSON.parse(inputData.toString('utf8'));
-    }
-    else if (type === 'eventHubTrigger') {
-        handleData = inputData;
-    }
-
-    return next(...Object.values(handleData));
-};
-
-const azureFunctionHandler = (firstName, lastName, services) => {
-
-    return {
-        body: services.greetingService.sayHello({ firstName, lastName }),
-        statusCode: 200,
-    };
-};
-
-const services = { greetingService };
-
-let pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
-
-let args = { firstName: "kenan", lastName: "hancer" };
-
-let result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
-
-expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
-
-expect(result.statusCode).toEqual(200);
+console.log(result2);
 ```

@@ -7,7 +7,7 @@ export type NonOptionalKeys<T> = T extends never ? never : { [k in keyof T]-?: u
 
 export type MiddlewareServices<T = unknown> = T & {};
 
-export type NextMiddleware<TParameters extends unknown[], TResult = any> = (...args: TParameters) => void | Promise<void> | Promise<TResult>;
+export type NextMiddleware<TParameters extends unknown[], TResult = any> = (...args: TParameters) => Promise<TResult>;
 
 export type Middleware<TParameters extends unknown[], TServices = unknown, TResult = any> = (...args: Append<TParameters, [services: MiddlewareServices<TServices>, next: NextMiddleware<TParameters>]>) => ReturnType<NextMiddleware<TParameters, TResult>>;
 

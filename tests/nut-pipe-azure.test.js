@@ -1,14 +1,11 @@
 const { buildPipeline } = require("../src/index");
-const { createInputDataForHttp, createContext: createAzureContext } = require("./azure");
-const { greetingService } = require("./services");
+const { createInputDataForHttp, createContext: createAzureContext } = require("./mocks/azure");
+const { greetingService } = require("./mocks/services");
 
 describe('NUT-PIPE Azure Function tests', () => {
     it('Azure Function Test', async () => {
-        const mockMiddleware = jest.fn();
 
-        const errorMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
+        const errorMiddleware = jest.fn(async (context, inputData, next) => {
 
             let result;
             try {
@@ -28,11 +25,9 @@ describe('NUT-PIPE Azure Function tests', () => {
             }
 
             return result;
-        };
+        });
 
-        const corsMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
+        const corsMiddleware = jest.fn(async (context, inputData, next) => {
 
             const response = await next(context, inputData);
 
@@ -47,11 +42,9 @@ describe('NUT-PIPE Azure Function tests', () => {
             }
 
             return response;
-        };
+        });
 
-        const logMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
+        const logMiddleware = jest.fn(async (context, inputData, next) => {
 
             const { executionContext: { functionName, invocationId } } = context;
 
@@ -65,11 +58,9 @@ describe('NUT-PIPE Azure Function tests', () => {
             context.log.info(`SUCCESS: ${logJson}`);
 
             return result;
-        };
+        });
 
-        const timingMiddleware = async (context, inputData, next) => {
-
-            mockMiddleware();
+        const timingMiddleware = jest.fn(async (context, inputData, next) => {
 
             const startDate = new Date();
 
@@ -82,11 +73,9 @@ describe('NUT-PIPE Azure Function tests', () => {
             context.log.info(`Elapsed milliseconds is ${elapsedMilliseconds} for ${functionName} function`);
 
             return result;
-        };
+        });
 
-        const jsonParser = async (context, inputData, services, next) => {
-
-            mockMiddleware();
+        const jsonParser = jest.fn(async (context, inputData, services, next) => {
 
             let { executionContext: { functionName } } = context;
             // const [azureFunctionName, triggerType] = functionName.split('-');
@@ -114,28 +103,50 @@ describe('NUT-PIPE Azure Function tests', () => {
             }
 
             return next(...Object.values(handleData));
-        };
+        });
 
-        const azureFunctionHandler = (firstName, lastName, services) => {
+        const azureFunctionHandler = jest.fn((firstName, lastName, services) => {
 
             return {
                 body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
             };
-        };
+        });
 
         const services = { greetingService };
 
-        let pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
+        const pipelineInvoker = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
 
-        let args = { firstName: "kenan", lastName: "hancer" };
+        const args = { firstName: "kenan", lastName: "hancer" };
 
-        let result = await pipelineInvoker(createAzureContext(), createInputDataForHttp(args));
+        const context = createAzureContext();
+
+        const inputData = createInputDataForHttp(args);
+
+        const result = await pipelineInvoker(context, inputData);
 
         expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
         expect(result.statusCode).toEqual(200);
 
-        expect(mockMiddleware).toHaveBeenCalledTimes(5);
+        expect(errorMiddleware).toHaveBeenCalledTimes(1);
+
+        expect(errorMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+
+        expect(corsMiddleware).toHaveBeenCalledTimes(1);
+
+        expect(corsMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+
+        expect(logMiddleware).toHaveBeenCalledTimes(1);
+
+        expect(logMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+
+        expect(jsonParser).toHaveBeenCalledTimes(1);
+
+        expect(jsonParser).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
+
+        expect(azureFunctionHandler).toHaveBeenCalledTimes(1);
+
+        expect(azureFunctionHandler).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object));
     });
 });

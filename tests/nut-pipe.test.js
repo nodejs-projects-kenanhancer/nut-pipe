@@ -1,8 +1,6 @@
 const { buildPipeline } = require("../src/index");
-const { middleware1, middleware2, middleware3, errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware } = require("./middlewares");
-const { greetingService } = require("./services");
-const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./aws");
-const { createInputDataForHttp, createContext: createAzureContext } = require("./azure");
+const { errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware } = require("./mocks/middlewares");
+const { greetingService } = require("./mocks/services");
 
 describe('NUT-PIPE tests', () => {
     beforeAll(() => {
@@ -29,21 +27,105 @@ describe('NUT-PIPE tests', () => {
         Object.assign(this, { mockMiddleware1, mockMiddleware2, mockMiddleware3, services });
     });
 
-    it('should create a basic pipeline function', () => {
+    it('when middlewares have one parameter and if we call middlewareChainFunction without any argument then that parameter in each function will be next function object except last middelware', () => {
 
-        const mockMiddleware1 = jest.fn((context, next) => {
+        const mockMiddleware1 = jest.fn((next) => {
 
-            return next(context);
+            return next();
         });
 
-        const mockMiddleware2 = jest.fn((context, next) => {
+        const mockMiddleware2 = jest.fn((services, next) => {
 
-            return next(context);
+            return next();
         });
 
-        const mockMiddleware3 = jest.fn((context) => {
+        const mockMiddleware3 = jest.fn(() => {
 
-            return `Hello ${context.firstName} ${context.lastName}`;
+            return 'Hello World!';
+        });
+
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
+
+        const response = middlewareChainFunction();
+
+        expect(response).toEqual('Hello World!');
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+    });
+
+    it('when middlewares have two parameters and if we call middlewareChainFunction without any argument then first parameter will be services object and second one will be next function object except last middelware', () => {
+
+        const mockMiddleware1 = jest.fn((services, next) => {
+
+            return next();
+        });
+
+        const mockMiddleware2 = jest.fn((services, next) => {
+
+            return next();
+        });
+
+        const mockMiddleware3 = jest.fn((services) => {
+
+            return 'Hello World!';
+        });
+
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
+
+        const response = middlewareChainFunction();
+
+        expect(response).toEqual('Hello World!');
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+    });
+
+    it('when middlewares have two parameters and if we call middlewareChainFunction with one argument then first parameter value will be passed object and second parameter will be next function object except last middelware', () => {
+
+        const mockMiddleware1 = jest.fn((person, next) => {
+
+            return next(person);
+        });
+
+        const mockMiddleware2 = jest.fn((person, services, next) => {
+
+            return next(person);
+        });
+
+        const mockMiddleware3 = jest.fn((person) => {
+
+            return `Hello ${person.firstName} ${person.lastName}`;
         });
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
@@ -64,7 +146,7 @@ describe('NUT-PIPE tests', () => {
 
         expect(mockMiddleware2).toHaveBeenCalledTimes(1);
 
-        expect(mockMiddleware2).toHaveBeenCalledWith(person, expect.any(Function));
+        expect(mockMiddleware2).toHaveBeenCalledWith(person, {}, expect.any(Function));
 
         expect(mockMiddleware2).toHaveReturnedWith(response);
 
@@ -76,9 +158,74 @@ describe('NUT-PIPE tests', () => {
         expect(mockMiddleware3).toHaveReturnedWith(response);
     });
 
-    it('should create a basic pipeline function with services', () => {
+    it('when middlewares have one parameter and if we call middlewareChainFunction with one argument then first parameter will be next function object except last middelware', () => {
 
-        const { mockMiddleware1, mockMiddleware2, mockMiddleware3, services } = this;
+        const mockMiddleware1 = jest.fn((next) => {
+
+            return next();
+        });
+
+        const mockMiddleware2 = jest.fn((next) => {
+
+            return next();
+        });
+
+        const mockMiddleware3 = jest.fn((person) => {
+
+            return `Hello ${person.firstName} ${person.lastName}`;
+        });
+
+        const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
+
+        const person = { firstName: "kenan", lastName: "hancer" };
+
+        const response = middlewareChainFunction(person);
+
+
+        expect(response).toEqual(`Hello ${person.firstName} ${person.lastName}`);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(person);
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+    });
+
+    it('when middlewares have two parameters and if we call middlewareChainFunction with one argument then first parameter value will be passed object and second parameter will be next function except last middelware due to end of pipeline', () => {
+
+        const mockMiddleware1 = jest.fn((person, next) => {
+            return next(person);
+        });
+
+        const mockMiddleware2 = jest.fn((person, next) => {
+            return next(person);
+        });
+
+        const mockMiddleware3 = jest.fn((person, services) => {
+            return services.greetingService.sayHello(person);
+        });
+
+        const services = {
+            greetingService: {
+                sayHello: jest.fn(({ firstName, lastName }) => {
+                    return `Hello ${firstName} ${lastName}`;
+                })
+            }
+        };
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3], services);
 
@@ -223,145 +370,282 @@ describe('NUT-PIPE tests', () => {
 
         expect(mockMiddleware1).toHaveBeenCalledTimes(1);
 
-        // expect(mockMiddleware1).
     });
 
     it('test1', () => {
         const pipelineInvoker = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        const args = { firstName: "kenan", lastName: "hancer" }
 
-        let result = pipelineInvoker({
-            method: greetingService.sayHello,
-            args
-        });
+        let response = pipelineInvoker({ method: greetingService.sayHello, args });
 
-        expect(result).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+        expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
-        result = pipelineInvoker({
-            method: greetingService.sayGoodbye,
-            args
-        });
+        response = pipelineInvoker({ method: greetingService.sayGoodbye, args });
 
-        expect(result).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
+        expect(response).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
     });
 
     it('test2', () => {
-        const mockMiddleware = jest.fn();
 
-        const basicMiddleware1 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware1 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware2 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware2 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware3 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware3 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, greetingService.sayHello]);
+        jest.spyOn(greetingService, 'sayHello');
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        jest.spyOn(greetingService, 'sayGoodbye');
 
-        let result = pipelineInvoker(args);
+        let pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayHello]);
 
-        expect(result).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+        const args = { firstName: "kenan", lastName: "hancer" }
+
+        let response = pipelineInvoker(args);
+
+        expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
 
-        pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, greetingService.sayGoodbye]);
+        pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayGoodbye]);
 
-        result = pipelineInvoker(args);
+        response = pipelineInvoker(args);
 
-        expect(result).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
+        expect(response).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
+
+
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(2);
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(2);
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(2);
+
+        expect(greetingService.sayHello).toHaveBeenCalledTimes(1);
+
+        expect(greetingService.sayGoodbye).toHaveBeenCalledTimes(1);
+
     });
 
     it('test3', () => {
-        const mockMiddleware = jest.fn();
 
-        const basicMiddleware1 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware1 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware2 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware2 = jest.fn((context, next) => {
 
             return next(context);
-        };
+        });
 
-        const basicMiddleware3 = (context, next) => {
-
-            mockMiddleware();
+        const mockMiddleware3 = jest.fn((context, next) => {
 
             // return next(...Object.values(context));
             return next.apply(null, Object.values(context));
-        };
+        });
 
-        const sayHello = (firstName, lastName) => `Hello ${firstName} ${lastName}`;
+        const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
 
-        let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, sayHello]);
+        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        let args = { firstName: "kenan", lastName: "hancer" }
+        const args = { firstName: "kenan", lastName: "hancer" }
 
-        let result = pipelineInvoker(args);
+        const response = pipelineInvoker(args);
 
-        expect(result).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
-        expect(mockMiddleware.mock.calls.length).toBe(3);
+        expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+
+
+        expect(sayHello).toHaveBeenCalledTimes(1);
+
+        expect(sayHello).toHaveBeenCalledWith(expect.any(String), expect.any(String));
+
+        expect(sayHello).toHaveReturnedWith(response);
     });
 
     it('test4', () => {
-        const mockMiddleware = jest.fn();
 
-        const basicMiddleware1 = (...args) => {
-
-            mockMiddleware();
+        const mockMiddleware1 = jest.fn((...args) => {
 
             const next = args.pop();
+            const services = args.pop();
 
             return next(...args);
-        };
+        });
 
-        const basicMiddleware2 = (...args) => {
-
-            mockMiddleware();
+        const mockMiddleware2 = jest.fn((...args) => {
 
             const next = args.pop();
+            const services = args.pop();
 
             return next(...args);
-        };
+        });
 
-        const basicMiddleware3 = (...args) => {
-
-            mockMiddleware();
+        const mockMiddleware3 = jest.fn((...args) => {
 
             const next = args.pop();
+            const services = args.pop();
 
             return next(...args);
-        };
+        });
 
-        const sayHello = (firstName, lastName) => `Hello ${firstName} ${lastName}`;
+        const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
 
-        let pipelineInvoker = buildPipeline([basicMiddleware1, basicMiddleware2, basicMiddleware3, sayHello]);
+        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        let result = pipelineInvoker("kenan", "hancer");
+        const firstName = "kenan", lastName = "hancer";
 
-        expect(result).toEqual("Hello kenan hancer");
+        const response = pipelineInvoker(firstName, lastName);
 
-        expect(mockMiddleware.mock.calls.length).toBe(3);
+
+        expect(response).toEqual(`Hello ${firstName} ${lastName}`);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object), expect.any(Function));
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+
+
+        expect(sayHello).toHaveBeenCalledTimes(1);
+
+        expect(sayHello).toHaveBeenCalledWith(expect.any(String), expect.any(String));
+
+        expect(sayHello).toHaveReturnedWith(response);
+    });
+
+    it('test5', () => {
+
+        const mockMiddleware1 = jest.fn((firstName, lastName, next) => {
+
+            return next(firstName, lastName);
+        });
+
+        const mockMiddleware2 = jest.fn((firstName, lastName, next) => {
+
+            return next(firstName, lastName);
+        });
+
+        const mockMiddleware3 = jest.fn((firstName, lastName, next) => {
+
+            return next(firstName, lastName);
+        });
+
+        const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
+
+        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+
+        const firstName = "kenan", lastName = "hancer";
+
+        const response = pipelineInvoker(firstName, lastName);
+
+
+        expect(response).toEqual(`Hello ${firstName} ${lastName}`);
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware1).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Function));
+
+        expect(mockMiddleware1).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Function));
+
+        expect(mockMiddleware2).toHaveReturnedWith(response);
+
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Function));
+
+        expect(mockMiddleware3).toHaveReturnedWith(response);
+
+
+        expect(sayHello).toHaveBeenCalledTimes(1);
+
+        expect(sayHello).toHaveBeenCalledWith(expect.any(String), expect.any(String));
+
+        expect(sayHello).toHaveReturnedWith(response);
+    });
+
+    it('test6', () => {
+
+        const mockMiddleware1 = jest.fn((next) => {
+
+            return next();
+        });
+
+        const mockMiddleware2 = jest.fn((next) => {
+
+            return next();
+        });
+
+        const mockMiddleware3 = jest.fn((firstName, lastName, age, services, next) => {
+
+            return next();
+        });
+
+        const sayHello = jest.fn((firstName, lastName, age) => `Hello ${firstName} ${lastName}, your age is ${age}`);
+
+        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+
+        const firstName = "kenan";
+
+        const response = pipelineInvoker(firstName);
+
+
+        expect(mockMiddleware1).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware2).toHaveBeenCalledTimes(1);
+
+        expect(mockMiddleware3).toHaveBeenCalledTimes(1);
+
+        expect(sayHello).toHaveBeenCalledTimes(1);
     });
 });

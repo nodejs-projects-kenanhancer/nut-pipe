@@ -1,14 +1,11 @@
 const { buildPipeline } = require("../src/index");
-const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./aws");
-const { greetingService } = require("./services");
+const { createAPIGatewayProxyEventV2, createContext: createAwsContext } = require("./mocks/aws");
+const { greetingService } = require("./mocks/services");
 
 describe('NUT-PIPE AWS Lambda Function tests', () => {
     it('AWS Lambda Function Test', async () => {
-        const mockMiddleware = jest.fn();
 
-        const corsMiddleware = async (event, context, next) => {
-
-            mockMiddleware();
+        const corsMiddleware = jest.fn(async (event, context, next) => {
 
             const response = await next(event, context);
 
@@ -20,26 +17,22 @@ describe('NUT-PIPE AWS Lambda Function tests', () => {
             response.headers['Access-Control-Allow-Credentials'] = true;
 
             return response;
-        };
+        });
 
-        const logMiddleware = async (event, context, next) => {
-
-            mockMiddleware();
+        const logMiddleware = jest.fn(async (event, context, next) => {
 
             try {
                 console.debug(`logMiddleware: request received in ${context.functionName} lambda`, event);
 
-                return await next(event, context);
+                return next(event, context);
             } catch (e) {
                 console.error(`logMiddleware: request failed in ${context.functionName} lambda`, event, e);
 
                 throw e;
             }
-        };
+        });
 
-        const jsonBodyParser = async (event, context, next) => {
-
-            mockMiddleware();
+        const jsonBodyParser = jest.fn(async (event, context, next) => {
 
             let parsedBody;
 
@@ -54,28 +47,46 @@ describe('NUT-PIPE AWS Lambda Function tests', () => {
             }
 
             return next(...Object.values(parsedBody));
-        };
+        });
 
-        const awsLambdaHandler = (firstName, lastName, services) => {
+        const awsLambdaHandler = jest.fn((firstName, lastName, services) => {
 
             return {
                 body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
             };
-        };
+        });
 
         const services = { greetingService };
 
-        let pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
+        const pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
 
-        let args = { firstName: "kenan", lastName: "hancer" };
+        const args = { firstName: "kenan", lastName: "hancer" };
 
-        let result = await pipelineInvoker(createAPIGatewayProxyEventV2(JSON.stringify(args)), createAwsContext());
+        const event = createAPIGatewayProxyEventV2(JSON.stringify(args));
 
-        expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+        const context = createAwsContext();
 
-        expect(result.statusCode).toEqual(200);
+        const response = await pipelineInvoker(event, context);
 
-        expect(mockMiddleware.mock.calls.length).toBe(3);
+        expect(response.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+
+        expect(response.statusCode).toEqual(200);
+
+        expect(corsMiddleware).toHaveBeenCalledTimes(1);
+
+        expect(corsMiddleware).toHaveBeenCalledWith(event, context, expect.any(Function));
+
+        expect(logMiddleware).toHaveBeenCalledTimes(1);
+
+        expect(logMiddleware).toHaveBeenCalledWith(event, context, expect.any(Function));
+
+        expect(jsonBodyParser).toHaveBeenCalledTimes(1);
+
+        expect(jsonBodyParser).toHaveBeenCalledWith(event, context, expect.any(Function));
+
+        expect(awsLambdaHandler).toHaveBeenCalledTimes(1);
+
+        expect(awsLambdaHandler).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object));
     });
 });

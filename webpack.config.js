@@ -2,9 +2,11 @@ const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
 const nodeExternals = require('webpack-node-externals');
 
+const { NODE_ENV = 'development' } = process.env;
+
 module.exports = {
   context: __dirname,
-  mode: 'development',
+  mode: NODE_ENV === 'production' ? 'production' : 'development',
   devtool: 'source-map',
   entry: {
     index: './src/index.js'

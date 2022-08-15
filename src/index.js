@@ -1,36 +1,46 @@
-const buildPipeline = (functions, services = {}, index = 0) => {
+const buildPipeline = (functions, services = {}, index = 0, initArgs = []) => {
 
-    let pipelineFunc = (...args) => {
+    const pipelineFunc = (...args) => {
 
         const funcParametersLength = functions[index].length;
 
-        const passedArgumentsLength = args.length;
-
-        const nullParametersLength = funcParametersLength - passedArgumentsLength;
-
         const isEndOfPipeline = index === functions.length - 1;
 
+        const passedArgumentsLength = args.length;
+
+        const missingArgumentsLength = funcParametersLength - passedArgumentsLength;
+
+        const _initArgs = index === 0 ? [...args] : [...initArgs];
+
+        const _args = [];
+
         if (!isEndOfPipeline) {
-            if (nullParametersLength > 2) {
-                args.push(...Array(nullParametersLength - 2).fill(null));
-            }
+            const next = buildPipeline(functions, services, index + 1, _initArgs);
 
-            if (nullParametersLength >= 2) {
-                args.push(services);
+            if (funcParametersLength === 1) {
+                _args.push(next);
+            } else if (passedArgumentsLength === 0) {
+                _args.push(..._initArgs, ...Array(missingArgumentsLength - _initArgs.length - 2).fill(null), services, next);
+            } else if (missingArgumentsLength === 1) {
+                _args.push(...args, next);
+            } else {
+                _args.push(...args, services, next);
             }
-
-            args.push(buildPipeline(functions, services, index + 1));
-        } else if (isEndOfPipeline) {
-            if (nullParametersLength > 1) {
-                args.push(...Array(nullParametersLength - 1).fill(null));
-            }
-
-            if (nullParametersLength >= 1) {
-                args.push(services);
+        } else {
+            if (passedArgumentsLength === 0) {
+                if (_initArgs.length === 0 && missingArgumentsLength === 1) {
+                    _args.push(..._initArgs, services);
+                } else {
+                    _args.push(..._initArgs);
+                }
+            } else if (missingArgumentsLength === 1) {
+                _args.push(...args, services);
+            } else {
+                _args.push(...args);
             }
         }
 
-        return functions[index].apply(null, args);
+        return functions[index].apply(null, _args);
     };
 
     return pipelineFunc;

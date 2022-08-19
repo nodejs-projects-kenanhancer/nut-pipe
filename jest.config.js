@@ -6,5 +6,11 @@ module.exports = {
     modulePaths: ['<rootDir>'],
     moduleFileExtensions: ["js", "json", "ts"],
     coverageDirectory: './coverage',
-    testPathIgnorePatterns: ['/node_modules/', '/dist/']
+    testPathIgnorePatterns: ['/node_modules/', '/dist/', '/coverage/', '/.github/'],
+    verbose: true,
+    globals: {
+        'ts-jest': {
+            diagnostics: true
+        }
+    }
 };

@@ -26,6 +26,18 @@ module.exports = {
         body,
         isBase64Encoded: false,
     }),
+    createEventBridgeEvent: (detailType, detail) => ({
+        id: '',
+        version: '1.0',
+        account: '',
+        time: '',
+        region: '',
+        resources: [],
+        source: '',
+        'detail-type': detailType,
+        detail,
+        'replay-name': ''
+    }),
     createContext: () => ({
         callbackWaitsForEmptyEventLoop: true,
         functionName: 'abcabc',
@@ -35,6 +47,9 @@ module.exports = {
         awsRequestId: 'abcabc',
         logGroupName: 'abcabc',
         logStreamName: 'abcabc',
-        getRemainingTimeInMillis: () => 0
+        getRemainingTimeInMillis: () => 0,
+        done: (error, result) => { },
+        fail: (error) => { },
+        succeed: (message, object) => { }
     })
 };

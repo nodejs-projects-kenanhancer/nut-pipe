@@ -1,11 +1,15 @@
-const { buildPipeline } = require("../src/index");
-const { createInputDataForHttp, createContext: createAzureContext } = require("./mocks/azure");
-const { greetingService } = require("./mocks/services");
+import { buildPipeline, AzureDefaultMiddleware } from "../src";
+import { createInputDataForHttp, createContext } from "./mocks/azure";
+import { greetingService } from "./mocks/services";
 
-describe('NUT-PIPE Azure Function tests', () => {
+describe('NUT-PIPE Azure Function tests for TypeScript', () => {
     it('Azure Function Test', async () => {
 
-        const errorMiddleware = jest.fn(async (context, inputData, next) => {
+        const services = { greetingService };
+
+        type MiddlewareServices = typeof services;
+
+        const errorMiddleware: AzureDefaultMiddleware = jest.fn(async (context, inputData, _, next) => {
 
             let result;
             try {
@@ -27,11 +31,11 @@ describe('NUT-PIPE Azure Function tests', () => {
             return result;
         });
 
-        const corsMiddleware = jest.fn(async (context, inputData, next) => {
+        const corsMiddleware: AzureDefaultMiddleware = jest.fn(async (context, inputData, _, next) => {
 
             const response = await next(context, inputData);
 
-            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
+            const { type } = context.bindingDefinitions.find(def => def.direction === 'in')!;
 
             if (type === 'httpTrigger') {
                 context.res = {
@@ -44,11 +48,12 @@ describe('NUT-PIPE Azure Function tests', () => {
             return response;
         });
 
-        const logMiddleware = jest.fn(async (context, inputData, next) => {
+        const logMiddleware: AzureDefaultMiddleware = jest.fn(async (context, inputData, _, next) => {
 
             const { executionContext: { functionName, invocationId } } = context;
 
             const log = { functionName, invocationId };
+            
             let logJson = JSON.stringify(log);
 
             context.log.info(`ENTRY: ${logJson}`);
@@ -60,7 +65,7 @@ describe('NUT-PIPE Azure Function tests', () => {
             return result;
         });
 
-        const timingMiddleware = jest.fn(async (context, inputData, next) => {
+        const timingMiddleware: AzureDefaultMiddleware = jest.fn(async (context, inputData, _, next) => {
 
             const startDate = new Date();
 
@@ -75,51 +80,41 @@ describe('NUT-PIPE Azure Function tests', () => {
             return result;
         });
 
-        const jsonParser = jest.fn(async (context, inputData, services, next) => {
+        const jsonParser: AzureDefaultMiddleware = jest.fn(async (context, inputData, _, next) => {
 
-            let { executionContext: { functionName } } = context;
-            // const [azureFunctionName, triggerType] = functionName.split('-');
-            // const { handlers } = services;
-            // const handle = handlers[azureFunctionName];
-            // if (!handle) {
-            //     throw new Error(`${functionName} function can not be find.`);
-            // }
+            const { type } = context.bindingDefinitions.find(def => def.direction === 'in')!;
 
-            const { type } = context.bindingDefinitions.find(def => def.direction === 'in');
-
-            let handleData;
+            let outputData;
 
             if (type === 'httpTrigger') {
-                handleData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
+                outputData = { ...inputData.body, ...inputData.headers, ...inputData.params, ...inputData.query }
             } else if (type === 'eventGridTrigger') {
                 let { data } = inputData;
-                handleData = JSON.parse(data);
+                outputData = JSON.parse(data);
             } else if (type === 'queueTrigger') {
-                handleData = inputData;
+                outputData = inputData;
             } else if (type === 'blobTrigger') {
-                handleData = JSON.parse(inputData.toString('utf8'));
+                outputData = JSON.parse(inputData.toString('utf8'));
             } else if (type === 'eventHubTrigger') {
-                handleData = inputData;
+                outputData = inputData;
             }
 
-            return next(...Object.values(handleData));
+            return next.apply(null, Object.values(outputData) as any);
         });
 
-        const azureFunctionHandler = jest.fn((firstName, lastName, services) => {
+        const azureFunctionHandler: AzureDefaultMiddleware<'All', [string, string], MiddlewareServices> = jest.fn((firstName, lastName, services) => {
 
             return {
                 body: services.greetingService.sayHello({ firstName, lastName }),
                 statusCode: 200,
-            };
+            } as any;
         });
 
-        const services = { greetingService };
-
-        const proxyFn = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler], services);
+        const proxyFn = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler as any], services);
 
         const args = { firstName: "Kenan", lastName: "Hancer" };
 
-        const context = createAzureContext();
+        const context = createContext();
 
         const inputData = createInputDataForHttp(args);
 
@@ -131,15 +126,15 @@ describe('NUT-PIPE Azure Function tests', () => {
 
         expect(errorMiddleware).toHaveBeenCalledTimes(1);
 
-        expect(errorMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+        expect(errorMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
         expect(corsMiddleware).toHaveBeenCalledTimes(1);
 
-        expect(corsMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+        expect(corsMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
         expect(logMiddleware).toHaveBeenCalledTimes(1);
 
-        expect(logMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Function));
+        expect(logMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
         expect(jsonParser).toHaveBeenCalledTimes(1);
 

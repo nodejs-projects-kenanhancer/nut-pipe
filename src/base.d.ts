@@ -10,4 +10,4 @@ export type Middleware<TParameters extends unknown[], TServices = unknown, TResu
 
 export type MiddlewareType<T extends (...args: any[]) => any> = T extends (...args: [...infer I, infer _, infer K]) => any ? K extends NextMiddleware ? I extends Parameters<K> ? T : never : never : never;
 
-export function buildPipeline<TParameters extends unknown[], TServices = unknown>(functions: Array<Middleware<TParameters>>, services?: MiddlewareServices<TServices>, index?: number): NextMiddleware<TParameters>;
+export function buildPipeline<TParameters extends unknown[], TServices = unknown>(functions: Array<Middleware<TParameters, TServices>>, services?: MiddlewareServices<TServices>, index?: number): NextMiddleware<TParameters>;

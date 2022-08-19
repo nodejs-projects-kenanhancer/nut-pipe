@@ -59,15 +59,15 @@ describe('NUT-PIPE AWS Lambda Function tests', () => {
 
         const services = { greetingService };
 
-        const pipelineInvoker = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
+        const proxyFn = buildPipeline([corsMiddleware, logMiddleware, jsonBodyParser, awsLambdaHandler], services);
 
-        const args = { firstName: "kenan", lastName: "hancer" };
+        const args = { firstName: "Kenan", lastName: "Hancer" };
 
         const event = createAPIGatewayProxyEventV2(JSON.stringify(args));
 
         const context = createAwsContext();
 
-        const response = await pipelineInvoker(event, context);
+        const response = await proxyFn(event, context);
 
         expect(response.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
@@ -87,6 +87,6 @@ describe('NUT-PIPE AWS Lambda Function tests', () => {
 
         expect(awsLambdaHandler).toHaveBeenCalledTimes(1);
 
-        expect(awsLambdaHandler).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.any(Object));
+        expect(awsLambdaHandler).toHaveBeenCalledWith(args.firstName, args.lastName, expect.any(Object));
     });
 });

@@ -18,9 +18,7 @@ describe('NUT-PIPE tests', () => {
 
         const services = {
             greetingService: {
-                sayHello: jest.fn(({ firstName, lastName }) => {
-                    return `Hello ${firstName} ${lastName}`;
-                })
+                sayHello: jest.fn(({ firstName, lastName }) => `Hello ${firstName} ${lastName}`)
             }
         };
 
@@ -130,7 +128,7 @@ describe('NUT-PIPE tests', () => {
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
 
-        const person = { firstName: "kenan", lastName: "hancer" };
+        const person = { firstName: "Kenan", lastName: "Hancer" };
 
         const response = middlewareChainFunction(person);
 
@@ -177,7 +175,7 @@ describe('NUT-PIPE tests', () => {
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3]);
 
-        const person = { firstName: "kenan", lastName: "hancer" };
+        const person = { firstName: "Kenan", lastName: "Hancer" };
 
         const response = middlewareChainFunction(person);
 
@@ -221,15 +219,13 @@ describe('NUT-PIPE tests', () => {
 
         const services = {
             greetingService: {
-                sayHello: jest.fn(({ firstName, lastName }) => {
-                    return `Hello ${firstName} ${lastName}`;
-                })
+                sayHello: jest.fn(({ firstName, lastName }) => `Hello ${firstName} ${lastName}`)
             }
         };
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3], services);
 
-        const person = { firstName: "kenan", lastName: "hancer" };
+        const person = { firstName: "Kenan", lastName: "Hancer" };
 
         const response = middlewareChainFunction(person);
 
@@ -275,9 +271,7 @@ describe('NUT-PIPE tests', () => {
 
         const services = {
             greetingService: {
-                sayHello: jest.fn(({ firstName, lastName }) => {
-                    return `Hello ${firstName} ${lastName}`;
-                })
+                sayHello: jest.fn(({ firstName, lastName }) => `Hello ${firstName} ${lastName}`)
             }
         };
 
@@ -332,8 +326,8 @@ describe('NUT-PIPE tests', () => {
         const data = {
             Person: {
                 personId: 1,
-                firstName: "kenan",
-                lastName: "HANCER"
+                firstName: "Kenan",
+                lastName: "Hancer"
             }
         };
 
@@ -362,7 +356,7 @@ describe('NUT-PIPE tests', () => {
 
         const middlewareChainFunction = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3])
 
-        const data = { firstName: "kenan", lastName: "hancer", mail: "kenanhancer@gmail.com", age: 37 };
+        const data = { firstName: "Kenan", lastName: "Hancer", mail: "kenanhancer@gmail.com", age: 37 };
 
         const response = middlewareChainFunction(data.firstName, data.lastName, data.mail, data.age);
 
@@ -373,15 +367,15 @@ describe('NUT-PIPE tests', () => {
     });
 
     it('test1', () => {
-        const pipelineInvoker = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
+        const proxyFn = buildPipeline([errorMidlleware, logMiddleware, dynamicFunctionCallerMiddleware]);
 
-        const args = { firstName: "kenan", lastName: "hancer" }
+        const args = { firstName: "Kenan", lastName: "Hancer" }
 
-        let response = pipelineInvoker({ method: greetingService.sayHello, args });
+        let response = proxyFn({ method: greetingService.sayHello, args });
 
         expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
-        response = pipelineInvoker({ method: greetingService.sayGoodbye, args });
+        response = proxyFn({ method: greetingService.sayGoodbye, args });
 
         expect(response).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
     });
@@ -407,18 +401,18 @@ describe('NUT-PIPE tests', () => {
 
         jest.spyOn(greetingService, 'sayGoodbye');
 
-        let pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayHello]);
+        let proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayHello]);
 
-        const args = { firstName: "kenan", lastName: "hancer" }
+        const args = { firstName: "Kenan", lastName: "Hancer" }
 
-        let response = pipelineInvoker(args);
+        let response = proxyFn(args);
 
         expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
 
-        pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayGoodbye]);
+        proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, greetingService.sayGoodbye]);
 
-        response = pipelineInvoker(args);
+        response = proxyFn(args);
 
         expect(response).toEqual(`Goodbye, ${args.firstName} ${args.lastName}`);
 
@@ -456,11 +450,11 @@ describe('NUT-PIPE tests', () => {
 
         const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
 
-        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+        const proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        const args = { firstName: "kenan", lastName: "hancer" }
+        const args = { firstName: "Kenan", lastName: "Hancer" }
 
-        const response = pipelineInvoker(args);
+        const response = proxyFn(args);
 
 
         expect(response).toEqual(`Hello ${args.firstName} ${args.lastName}`);
@@ -521,11 +515,11 @@ describe('NUT-PIPE tests', () => {
 
         const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
 
-        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+        const proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        const firstName = "kenan", lastName = "hancer";
+        const firstName = "Kenan", lastName = "Hancer";
 
-        const response = pipelineInvoker(firstName, lastName);
+        const response = proxyFn(firstName, lastName);
 
 
         expect(response).toEqual(`Hello ${firstName} ${lastName}`);
@@ -577,11 +571,11 @@ describe('NUT-PIPE tests', () => {
 
         const sayHello = jest.fn((firstName, lastName) => `Hello ${firstName} ${lastName}`);
 
-        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+        const proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        const firstName = "kenan", lastName = "hancer";
+        const firstName = "Kenan", lastName = "Hancer";
 
-        const response = pipelineInvoker(firstName, lastName);
+        const response = proxyFn(firstName, lastName);
 
 
         expect(response).toEqual(`Hello ${firstName} ${lastName}`);
@@ -633,11 +627,11 @@ describe('NUT-PIPE tests', () => {
 
         const sayHello = jest.fn((firstName, lastName, age) => `Hello ${firstName} ${lastName}, your age is ${age}`);
 
-        const pipelineInvoker = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
+        const proxyFn = buildPipeline([mockMiddleware1, mockMiddleware2, mockMiddleware3, sayHello]);
 
-        const firstName = "kenan";
+        const firstName = "Kenan";
 
-        const response = pipelineInvoker(firstName);
+        const response = proxyFn(firstName);
 
 
         expect(mockMiddleware1).toHaveBeenCalledTimes(1);

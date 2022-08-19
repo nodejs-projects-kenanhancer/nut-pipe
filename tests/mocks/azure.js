@@ -1,5 +1,5 @@
 module.exports = {
-    createInputDataForHttp: (body = '') => ({
+    createInputDataForHttp: (body) => ({
         method: "GET",
         url: "",
         headers: {},

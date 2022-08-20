@@ -17,6 +17,7 @@ module.exports = {
         }
     },
     transformIgnorePatterns: [
-        "<rootDir>/node_modules/"
+        "<rootDir>/node_modules/",
+        "<rootDir>/tests/nut-pipe-azure.test.ts"
       ]
 };

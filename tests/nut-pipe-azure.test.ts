@@ -1,9 +1,9 @@
 import { buildPipeline, AzureDefaultMiddleware } from "../src";
-// import { createInputDataForHttp, createContext } from "./mocks/azure";
+import { createInputDataForHttp, createContext } from "./mocks/azure";
 import { greetingService } from "./mocks/services";
 
 describe('NUT-PIPE Azure Function tests for TypeScript', () => {
-    it('Azure Function Test', async () => {
+    it('Azure Function Test with async', async () => {
 
         const services = { greetingService };
 
@@ -110,40 +110,38 @@ describe('NUT-PIPE Azure Function tests for TypeScript', () => {
             } as any;
         });
 
-        buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler as any], services);
-        // const proxyFn = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler as any], services);
+        const proxyFn = buildPipeline([errorMiddleware, corsMiddleware, logMiddleware, timingMiddleware, jsonParser, azureFunctionHandler as any], services);
 
-        // const args = { firstName: "Kenan", lastName: "Hancer" };
+        const args = { firstName: "Kenan", lastName: "Hancer" };
 
-        // const context = createContext();
+        const context = createContext();
 
-        // const inputData = createInputDataForHttp(args);
+        const inputData = createInputDataForHttp(args);
 
-        // await proxyFn(context, inputData);
-        // const result = await proxyFn(context, inputData);
+        const result = await proxyFn(context, inputData);
 
-        // expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
+        expect(result.body).toEqual(`Hello ${args.firstName} ${args.lastName}`);
 
-        // expect(result.statusCode).toEqual(200);
+        expect(result.statusCode).toEqual(200);
 
-        // expect(errorMiddleware).toHaveBeenCalledTimes(1);
+        expect(errorMiddleware).toHaveBeenCalledTimes(1);
 
-        // expect(errorMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
+        expect(errorMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
-        // expect(corsMiddleware).toHaveBeenCalledTimes(1);
+        expect(corsMiddleware).toHaveBeenCalledTimes(1);
 
-        // expect(corsMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
+        expect(corsMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
-        // expect(logMiddleware).toHaveBeenCalledTimes(1);
+        expect(logMiddleware).toHaveBeenCalledTimes(1);
 
-        // expect(logMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
+        expect(logMiddleware).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
-        // expect(jsonParser).toHaveBeenCalledTimes(1);
+        expect(jsonParser).toHaveBeenCalledTimes(1);
 
-        // expect(jsonParser).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
+        expect(jsonParser).toHaveBeenCalledWith(context, inputData, expect.any(Object), expect.any(Function));
 
-        // expect(azureFunctionHandler).toHaveBeenCalledTimes(1);
+        expect(azureFunctionHandler).toHaveBeenCalledTimes(1);
 
-        // expect(azureFunctionHandler).toHaveBeenCalledWith(args.firstName, args.lastName, expect.any(Object));
+        expect(azureFunctionHandler).toHaveBeenCalledWith(args.firstName, args.lastName, expect.any(Object));
     });
 });

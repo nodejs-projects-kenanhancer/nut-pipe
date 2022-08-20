@@ -1,7 +1,8 @@
 module.exports = {
+    preset: 'ts-jest',
     testEnvironment: 'node',
     rootDir: ".",
-    // modulePaths: ['<rootDir>'],
+    modulePaths: ['<rootDir>'],
     transform: { "^.+\\.(t|j)s$": "ts-jest" },
     testMatch: ['<rootDir>/tests/**/*.test.(t|j)s'],
     collectCoverageFrom: ['<rootDir>/src/index.js'],

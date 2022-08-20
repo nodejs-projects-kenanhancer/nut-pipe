@@ -15,5 +15,8 @@ module.exports = {
         'ts-jest': {
             diagnostics: true
         }
-    }
+    },
+    transformIgnorePatterns: [
+        "<rootDir>/node_modules/"
+      ]
 };

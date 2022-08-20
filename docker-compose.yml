@@ -1,0 +1,10 @@
+version: '3.4'
+
+services:
+  nutpipe:
+    image: nutpipe
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production

@@ -15,9 +15,5 @@ module.exports = {
         'ts-jest': {
             diagnostics: true
         }
-    },
-    transformIgnorePatterns: [
-        "<rootDir>/node_modules/",
-        "<rootDir>/tests/nut-pipe-azure.test.ts"
-      ]
+    }
 };
